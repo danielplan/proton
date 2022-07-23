@@ -16,13 +16,13 @@ frame mobile {
 component LandingPage() {
     children: [
         Headline (
-            title: "Welcome to proton"
-            subtitle: "Let's get started"
+            title: "Welcome to proton",
+            subtitle: "Let's get started",
         ),
         Text("This is a proton example"),
         Button(
-            text: "Sign Up"
-            link: SignUpPage()
+            text: "Sign Up",
+            link: SignUpPage(),
         )
     ]
 }
@@ -35,8 +35,8 @@ component SignUpPage() {
         ),
         Text("Sign up"),
         Box(
-            background: #fff
-            height: 200px
+            background: #fff,
+            height: 200px,
         )
     ]
 }
@@ -53,10 +53,10 @@ component Button (text, link) {
         Text(text: text, size: 1)
     ]
     styles: {
-        background: #fff
-        border-radius: 4px
-        padding: 8px 16px
-        cursor: pointer
+        background: #fff,
+        border-radius: 4px,
+        padding: 8px 16px,
+        cursor: pointer,
     }
     events: {
         click: navigateTo(link)

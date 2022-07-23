@@ -1,5 +1,5 @@
 import Token, { TokenType } from './token';
-import LexerException from './lexer-error';
+import LexerError from './lexer-error';
 
 export default class Lexer {
     content: string;
@@ -8,25 +8,25 @@ export default class Lexer {
     static regexLetter = /[a-zA-Z]/;
     static regexWhitespace = /\s/;
     static fixedTokens = new Map<string, TokenType>([
-        ['component', TokenType.TOKEN_COMPONENT],
-        ['frame', TokenType.TOKEN_FRAME],
-        ['px', TokenType.TOKEN_UNIT],
-        ['+', TokenType.TOKEN_PLUS],
-        ['-', TokenType.TOKEN_MINUS],
-        ['*', TokenType.TOKEN_MULTIPLY],
-        ['/', TokenType.TOKEN_DIVIDE],
-        ['(', TokenType.TOKEN_LEFT_PAREN],
-        [')', TokenType.TOKEN_RIGHT_PAREN],
-        ['{', TokenType.TOKEN_LEFT_BRACE],
-        ['}', TokenType.TOKEN_RIGHT_BRACE],
-        ['[', TokenType.TOKEN_LEFT_BRACKET],
-        [']', TokenType.TOKEN_RIGHT_BRACKET],
-        [',', TokenType.TOKEN_COMMA],
-        [';', TokenType.TOKEN_SEMICOLON],
-        ['.', TokenType.TOKEN_DOT],
-        [':', TokenType.TOKEN_COLON],
-        ['=', TokenType.TOKEN_EQUAL],
-        ['%', TokenType.TOKEN_PERCENT],
+        ['component', TokenType.COMPONENT],
+        ['frame', TokenType.FRAME],
+        ['px', TokenType.UNIT],
+        ['+', TokenType.PLUS],
+        ['-', TokenType.MINUS],
+        ['*', TokenType.MULTIPLY],
+        ['/', TokenType.DIVIDE],
+        ['(', TokenType.LEFT_PAREN],
+        [')', TokenType.RIGHT_PAREN],
+        ['{', TokenType.LEFT_BRACE],
+        ['}', TokenType.RIGHT_BRACE],
+        ['[', TokenType.LEFT_BRACKET],
+        [']', TokenType.RIGHT_BRACKET],
+        [',', TokenType.COMMA],
+        [';', TokenType.SEMICOLON],
+        ['.', TokenType.DOT],
+        [':', TokenType.COLON],
+        ['=', TokenType.EQUAL],
+        ['%', TokenType.PERCENT],
     ]);
 
     constructor(content: string) {
@@ -54,7 +54,7 @@ export default class Lexer {
         if (!token) token = this.parseFixedTokens();
         if (!token) token = this.parseIdentifier();
         if (!token) token = this.parseColor();
-        if (!token) throw new LexerException('Unexpected character: ' + this.getCurrentChar());
+        if (!token) throw new LexerError('Unexpected character: ' + this.getCurrentChar());
 
         return token;
     }
@@ -70,7 +70,7 @@ export default class Lexer {
             }
         }
         if (match.length > 0) {
-            return new Token(match, TokenType.TOKEN_NUMBER);
+            return new Token(match, TokenType.NUMBER);
         }
         return null;
     }
@@ -83,7 +83,7 @@ export default class Lexer {
         this.pos++;
         while (this.getCurrentChar() != startChar) {
             if (!this.getCurrentChar()) {
-                throw new LexerException('Unterminated string');
+                throw new LexerError('Unterminated string');
             }
             if (this.getCurrentChar() == '\\') {
                 switch (this.getNextChar()) {
@@ -109,7 +109,7 @@ export default class Lexer {
         match += this.getCurrentChar();
         this.pos++;
         if (match.length > 1) {
-            return new Token(match, TokenType.TOKEN_STRING);
+            return new Token(match, TokenType.STRING);
         }
         return null;
     }
@@ -165,7 +165,7 @@ export default class Lexer {
             match += this.getCurrentChar();
             this.pos++;
         }
-        return new Token(match, TokenType.TOKEN_IDENTIFIER);
+        return new Token(match, TokenType.IDENTIFIER);
     }
 
     private isIdentifierCharacter(): boolean {
@@ -194,6 +194,6 @@ export default class Lexer {
             match += this.getCurrentChar();
             this.pos++;
         }
-        return new Token(match, TokenType.TOKEN_COLOR);
+        return new Token(match, TokenType.COLOR);
     }
 }

@@ -1,4 +1,4 @@
-export default class LexerError extends Error {
+export default class ParserError extends Error {
     constructor(message: string) {
         super(message);
     }
