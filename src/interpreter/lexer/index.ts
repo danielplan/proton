@@ -1,16 +1,37 @@
-import Token, {TokenType} from "./token";
-import LexerException from "./lexer-exception";
+import Token, { TokenType } from './token';
+import LexerException from './lexer-error';
 
 export default class Lexer {
     content: string;
     pos: number;
-    match: string;
     static regexDigit = /[0-9]/;
+    static regexLetter = /[a-zA-Z]/;
+    static regexWhitespace = /\s/;
+    static fixedTokens = new Map<string, TokenType>([
+        ['component', TokenType.TOKEN_COMPONENT],
+        ['frame', TokenType.TOKEN_FRAME],
+        ['px', TokenType.TOKEN_UNIT],
+        ['+', TokenType.TOKEN_PLUS],
+        ['-', TokenType.TOKEN_MINUS],
+        ['*', TokenType.TOKEN_MULTIPLY],
+        ['/', TokenType.TOKEN_DIVIDE],
+        ['(', TokenType.TOKEN_LEFT_PAREN],
+        [')', TokenType.TOKEN_RIGHT_PAREN],
+        ['{', TokenType.TOKEN_LEFT_BRACE],
+        ['}', TokenType.TOKEN_RIGHT_BRACE],
+        ['[', TokenType.TOKEN_LEFT_BRACKET],
+        [']', TokenType.TOKEN_RIGHT_BRACKET],
+        [',', TokenType.TOKEN_COMMA],
+        [';', TokenType.TOKEN_SEMICOLON],
+        ['.', TokenType.TOKEN_DOT],
+        [':', TokenType.TOKEN_COLON],
+        ['=', TokenType.TOKEN_EQUAL],
+        ['%', TokenType.TOKEN_PERCENT],
+    ]);
 
     constructor(content: string) {
         this.content = content;
         this.pos = 0;
-        this.match = '';
     }
 
     tokenize(): Token[] {
@@ -26,61 +47,79 @@ export default class Lexer {
     }
 
     getNextToken(): Token | null {
-        let token: Token | null;
-        this.match = '';
-        this.skipWhitespace();
+        if (this.skipWhitespace()) return null;
 
-        token = this.parseNumber();
-        if (!token) {
-            token = this.parseString();
-        }
-        if (!token) {
-            throw new LexerException('Unexpected character: ' + this.currChar());
-        }
+        let token = this.parseNumber();
+        if (!token) token = this.parseString();
+        if (!token) token = this.parseFixedTokens();
+        if (!token) token = this.parseIdentifier();
+        if (!token) token = this.parseColor();
+        if (!token) throw new LexerException('Unexpected character: ' + this.getCurrentChar());
+
         return token;
     }
 
     private parseNumber(): Token | null {
+        let match = '';
         while (this.isDigit()) {
-            this.match += this.currChar();
+            match += this.getCurrentChar();
             this.pos++;
-            if (this.currChar() == '.' && this.isDigit(this.nextChar())) {
-                this.match += this.currChar();
+            if (this.getCurrentChar() == '.' && this.isDigit(this.getNextChar())) {
+                match += this.getCurrentChar();
                 this.pos++;
             }
         }
-        if (this.match.length > 0) {
-            return new Token(this.match, TokenType.TOKEN_NUMBER);
+        if (match.length > 0) {
+            return new Token(match, TokenType.TOKEN_NUMBER);
         }
         return null;
     }
 
     private parseString(): Token | null {
-        if (!this.startsString())
-            return null;
+        if (!this.isStringStartingCharacter()) return null;
 
-        const startChar = this.currChar();
-        this.match = startChar;
+        const startChar = this.getCurrentChar();
+        let match = startChar;
         this.pos++;
-        while (this.currChar() != startChar) {
-            this.match += this.currChar();
-            this.pos++;
-            if(!this.currChar()) {
+        while (this.getCurrentChar() != startChar) {
+            if (!this.getCurrentChar()) {
                 throw new LexerException('Unterminated string');
             }
+            if (this.getCurrentChar() == '\\') {
+                switch (this.getNextChar()) {
+                    case 'n':
+                        match += '\n';
+                        break;
+                    case 't':
+                        match += '\t';
+                        break;
+                    case 'r':
+                        match += '\r';
+                        break;
+                    default:
+                        match += this.getNextChar();
+                        break;
+                }
+                this.pos += 2;
+            } else {
+                match += this.getCurrentChar();
+                this.pos++;
+            }
         }
-        this.match += this.currChar();
+        match += this.getCurrentChar();
         this.pos++;
-        if (this.match.length > 1) {
-            return new Token(this.match, TokenType.TOKEN_STRING);
+        if (match.length > 1) {
+            return new Token(match, TokenType.TOKEN_STRING);
         }
         return null;
     }
 
-    private skipWhitespace(): void {
+    private skipWhitespace(): boolean {
+        const whitespace = this.isWhitespace();
         while (this.isWhitespace()) {
             this.pos++;
         }
+        return whitespace;
     }
 
     private isFinished(): boolean {
@@ -88,22 +127,73 @@ export default class Lexer {
     }
 
     private isWhitespace(): boolean {
-        return this.currChar() == ' ' || this.currChar() == '\n' || this.currChar() == '\t';
+        return Lexer.regexWhitespace.test(this.getCurrentChar());
     }
 
-    private isDigit(char: string = this.currChar()): boolean {
+    private isDigit(char: string = this.getCurrentChar()): boolean {
         return Lexer.regexDigit.test(char);
     }
 
-    private startsString(): boolean {
-        return this.currChar() == '"' || this.currChar() == '\'';
+    private isStringStartingCharacter(): boolean {
+        return this.getCurrentChar() == '"' || this.getCurrentChar() == "'";
     }
 
-    private currChar() {
+    private getCurrentChar() {
         return this.content.charAt(this.pos);
     }
 
-    private nextChar() {
+    private getNextChar() {
         return this.content.charAt(this.pos + 1);
+    }
+
+    private parseFixedTokens(): Token | null {
+        for (let [value, tokenType] of Lexer.fixedTokens) {
+            if (this.content.substring(this.pos, this.pos + value.length) == value) {
+                this.pos += value.length;
+                return new Token(value, tokenType);
+            }
+        }
+        return null;
+    }
+
+    private parseIdentifier(): Token | null {
+        if (!this.isLetter() && this.getCurrentChar() != '_') {
+            return null;
+        }
+        let match = '';
+        while (this.isIdentifierCharacter()) {
+            match += this.getCurrentChar();
+            this.pos++;
+        }
+        return new Token(match, TokenType.TOKEN_IDENTIFIER);
+    }
+
+    private isIdentifierCharacter(): boolean {
+        return this.isLetter() || this.isDigit() || this.getCurrentChar() == '_' || this.getCurrentChar() == '-';
+    }
+
+    private isLetter(): boolean {
+        return Lexer.regexLetter.test(this.getCurrentChar());
+    }
+
+    private parseColor() {
+        if (this.getCurrentChar() != '#') {
+            return null;
+        }
+        this.pos++;
+        let match = '#';
+        while (
+            this.isDigit() ||
+            this.getCurrentChar() == 'a' ||
+            this.getCurrentChar() == 'b' ||
+            this.getCurrentChar() == 'c' ||
+            this.getCurrentChar() == 'd' ||
+            this.getCurrentChar() == 'e' ||
+            this.getCurrentChar() == 'f'
+        ) {
+            match += this.getCurrentChar();
+            this.pos++;
+        }
+        return new Token(match, TokenType.TOKEN_COLOR);
     }
 }

@@ -20,9 +20,23 @@ component LandingPage() {
             subtitle: "Let's get started"
         ),
         Text("This is a proton example"),
-        Button (
+        Button(
             text: "Sign Up"
-            link: SignunPage()
+            link: SignUpPage()
+        )
+    ]
+}
+
+component SignUpPage() {
+    children: [
+        Headline (
+            title: "Sign Up"
+            subtitle: "Let's get started"
+        ),
+        Text("Sign up"),
+        Box(
+            background: #fff
+            height: 200px
         )
     ]
 }
@@ -40,21 +54,20 @@ component Button (text, link) {
     ]
     styles: {
         background: #fff
-        border: 1px solid #ccc
         border-radius: 4px
         padding: 8px 16px
         cursor: pointer
     }
     events: {
-        onClick: () -> FRAME.navigateTo(link)
+        click: navigateTo(link)
     }
 }
 ```
 
 Primitive components
 
-* Text
-* Box
-* Ellipsis
-* Image
-* Columns (flexbox)
+-   Text
+-   Box
+-   Ellipsis
+-   Image
+-   Columns (flexbox)
