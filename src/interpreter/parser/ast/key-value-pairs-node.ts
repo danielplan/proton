@@ -6,4 +6,8 @@ export default class KeyValuePairsNode extends Node {
         super();
         this.pairs = new Map();
     }
+
+    add(key: string, value: Node) {
+        this.pairs.set(key, value);
+    }
 }
