@@ -4,6 +4,10 @@ import Lexer from '../src/interpreter/lexer';
 import FrameNode from '../src/interpreter/parser/ast/frame-node';
 import KeyValuePairsNode from '../src/interpreter/parser/ast/key-value-pairs-node';
 import NumberNode from '../src/interpreter/parser/ast/number-node';
+import StringNode from '../src/interpreter/parser/ast/string-node';
+import IdentifierNode from '../src/interpreter/parser/ast/identifier-node';
+import ColorNode from '../src/interpreter/parser/ast/color-node';
+import RatioNode from '../src/interpreter/parser/ast/ratio-node';
 
 describe('Parser', () => {
     it('should parse top-level statements', () => {
@@ -88,5 +92,117 @@ describe('Parser', () => {
         const nNumber3 = number3 as NumberNode;
         expect(nNumber3.value).toBe(20);
         expect(nNumber3.unit).toBeNull();
+    });
+
+    it('should parse error on invalid key-value pair', () => {
+        const tokens = new Lexer('frame foo { key: 20px, }').tokenize();
+        const parser = new Parser(tokens);
+        expect(() => parser.parse()).toThrowError('Expected key, got: }');
+
+        const tokens2 = new Lexer('frame foo { key: 20px, key2: }').tokenize();
+        const parser2 = new Parser(tokens2);
+        expect(() => parser2.parse()).toThrowError('Expected value, got: }');
+
+        const tokens3 = new Lexer('frame foo { key: 20px, key2: 20px 10 }').tokenize();
+
+        const parser3 = new Parser(tokens3);
+        expect(() => parser3.parse()).toThrowError('Expected ",", got: NUMBER');
+    });
+
+    it('should parse string as value', () => {
+        const tokens = new Lexer('frame foo { key: "string" }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+        expect(fNode.keyValuePairs).toBeInstanceOf(KeyValuePairsNode);
+
+        const kvpNode = fNode.keyValuePairs as KeyValuePairsNode;
+        expect(kvpNode.pairs.size).toBe(1);
+
+        const kvp = kvpNode.pairs;
+        const string = kvp.get('key');
+        expect(string).toBeInstanceOf(StringNode);
+        const sString = string as StringNode;
+        expect(sString.value).toBe('string');
+    });
+
+    it('should parse an identifier', () => {
+        const tokens = new Lexer('frame foo { key: value }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+        expect(fNode.keyValuePairs).toBeInstanceOf(KeyValuePairsNode);
+
+        const kvpNode = fNode.keyValuePairs as KeyValuePairsNode;
+        expect(kvpNode.pairs.size).toBe(1);
+
+        const kvp = kvpNode.pairs;
+        const identifier = kvp.get('key');
+        expect(identifier).toBeInstanceOf(IdentifierNode);
+        const iIdentifier = identifier as IdentifierNode;
+        expect(iIdentifier.name).toBe('value');
+    });
+
+    it('should parse color', () => {
+        const tokens = new Lexer('frame foo { key: #fff }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+        expect(fNode.keyValuePairs).toBeInstanceOf(KeyValuePairsNode);
+
+        const kvpNode = fNode.keyValuePairs as KeyValuePairsNode;
+        expect(kvpNode.pairs.size).toBe(1);
+
+        const kvp = kvpNode.pairs;
+        const color = kvp.get('key');
+        expect(color).toBeInstanceOf(ColorNode);
+        const cColor = color as ColorNode;
+        expect(cColor.value).toBe('#fff');
+    });
+
+    it('should parse ratio', () => {
+        const tokens = new Lexer('frame foo { key: 1/2 }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+        expect(fNode.keyValuePairs).toBeInstanceOf(KeyValuePairsNode);
+
+        const kvpNode = fNode.keyValuePairs as KeyValuePairsNode;
+        expect(kvpNode.pairs.size).toBe(1);
+
+        const kvp = kvpNode.pairs;
+        const ratio = kvp.get('key');
+        expect(ratio).toBeInstanceOf(RatioNode);
+        const rRatio = ratio as RatioNode;
+
+        const left = rRatio.left;
+        expect(left).toBeInstanceOf(NumberNode);
+        const nLeft = left as NumberNode;
+        expect(nLeft.value).toBe(1);
+
+        const right = rRatio.right;
+        expect(right).toBeInstanceOf(NumberNode);
+        const nRight = right as NumberNode;
+        expect(nRight.value).toBe(2);
     });
 });

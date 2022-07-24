@@ -5,6 +5,10 @@ import ParserError from './parser-error';
 import FrameNode from './ast/frame-node';
 import KeyValuePairsNode from './ast/key-value-pairs-node';
 import NumberNode from './ast/number-node';
+import IdentifierNode from './ast/identifier-node';
+import StringNode from './ast/string-node';
+import ColorNode from './ast/color-node';
+import RatioNode from './ast/ratio-node';
 
 export default class Parser {
     tokens: Token[];
@@ -33,7 +37,7 @@ export default class Parser {
 
     // TOP-LEVEL-DECLARATION ::= FRAME-DECLARATION | COMPONENT-DECLARATION
     private parseTopLevelDeclaration(root: Node): Node {
-        const token = this.getNextToken();
+        const token = this.consumeToken();
 
         switch (token.type) {
             case TokenType.FRAME:
@@ -47,11 +51,11 @@ export default class Parser {
 
     // FRAME-DECLARATION ::= 'frame' IDENTIFIER '{' KEY-VALUE-PAIRS '}'
     private parseFrameDeclaration(root: Node): Node {
-        const nameToken = this.getNextToken();
-        if (this.getNextToken().type !== TokenType.LEFT_BRACE) throw new ParserError('Expected "{"');
+        const nameToken = this.consumeToken();
+        if (this.consumeToken().type !== TokenType.LEFT_BRACE) throw new ParserError('Expected "{"');
 
         const keyValuePairs = this.parseKeyValuePairs();
-        if (this.getNextToken().type !== TokenType.RIGHT_BRACE) {
+        if (this.consumeToken().type !== TokenType.RIGHT_BRACE) {
             throw new ParserError('Expected "}"');
         }
 
@@ -66,58 +70,77 @@ export default class Parser {
     // KEY-VALUE-PAIRS ::= KEY-VALUE-PAIR | KEY-VALUE-PAIRS ',' KEY-VALUE-PAIR | EMPTY
     // KEY-VALUE-PAIR ::= IDENTIFIER ':' VALUE
     private parseKeyValuePairs(): KeyValuePairsNode | null {
-        const nextToken = this.peekNextToken();
+        const nextToken = this.peekToken();
         if (nextToken.type === TokenType.RIGHT_BRACE) return null;
         const node = new KeyValuePairsNode();
         while (true) {
-            const identifier = this.getNextToken();
+            const identifier = this.consumeToken();
             if (identifier.type !== TokenType.IDENTIFIER)
-                throw new ParserError('Expected identifier, got: ' + identifier.getTypeString());
-            if (this.getNextToken().type !== TokenType.COLON)
-                throw new ParserError('Expected ":", got: ' + this.getNextToken().getTypeString());
+                throw new ParserError('Expected key, got: ' + identifier.getTypeString());
+
+            const colon = this.consumeToken();
+            if (colon.type !== TokenType.COLON) throw new ParserError('Expected ":", got: ' + colon.getTypeString());
+
             node.add(identifier.lexeme, this.parseValue());
 
-            if (this.peekNextToken().type === TokenType.RIGHT_BRACE) break;
-            if (this.getNextToken().type !== TokenType.COMMA)
-                throw new ParserError('Expected ",", got: ' + this.getNextToken().getTypeString());
+            if (this.peekToken().type === TokenType.RIGHT_BRACE) break;
+            const comma = this.consumeToken();
+            if (comma.type !== TokenType.COMMA) throw new ParserError('Expected ",", got: ' + comma.getTypeString());
         }
         return node;
     }
 
-    // VALUE ::= NUMBER | NUMBER UNIT | COLOR | IDENTIFIER
+    // VALUE ::= NUMBER | NUMBER UNIT | COLOR | IDENTIFIER | RATIO | STRING
     private parseValue(): Node {
-        if (this.peekNextToken().type === TokenType.NUMBER) {
-            return this.parseNumber();
+        const token = this.peekToken();
+        switch (token.type) {
+            case TokenType.NUMBER:
+                return this.parseNumber();
+            case TokenType.IDENTIFIER:
+                this.consumeToken();
+                return new IdentifierNode(token.lexeme);
+            case TokenType.STRING:
+                this.consumeToken();
+                return new StringNode(token.lexeme.substring(1, token.lexeme.length - 1));
+            case TokenType.COLOR:
+                this.consumeToken();
+                return new ColorNode(token.lexeme);
+            default:
+                throw new ParserError('Expected value, got: ' + token.getTypeString());
         }
-        if (this.peekNextToken().type === TokenType.IDENTIFIER) {
-            return this.parseIdentifier();
-        }
-        throw new ParserError('Unexpected token: ' + this.peekNextToken().getTypeString());
     }
 
-    private parseIdentifier(): Node {
-        throw new Error('Method not implemented.');
-    }
+    private parseNumber(): NumberNode | RatioNode {
+        const number = Number.parseFloat(this.consumeToken().lexeme);
+        const nextToken = this.peekToken();
 
-    private parseNumber(): NumberNode {
-        const number = this.getNextToken();
-        const unitToken = this.peekNextToken();
+        if (nextToken.type === TokenType.DIVIDE) {
+            this.consumeToken();
+            const rightToken = this.consumeToken();
+            if (rightToken.type !== TokenType.NUMBER)
+                throw new ParserError('Expected number, got: ' + rightToken.getTypeString());
+            return new RatioNode(number, Number.parseFloat(rightToken.lexeme));
+        }
+
         let unit: string | null = null;
-        if (unitToken.type === TokenType.UNIT) {
-            this.getNextToken();
-            unit = unitToken.lexeme;
+        switch (nextToken.type) {
+            case TokenType.PERCENT:
+            case TokenType.UNIT:
+                unit = nextToken.lexeme;
+                this.consumeToken();
+                break;
         }
 
-        return new NumberNode(Number.parseFloat(number.lexeme), unit);
+        return new NumberNode(number, unit);
     }
 
-    private getNextToken(): Token {
+    private consumeToken(): Token {
         const token = this.tokens.shift();
         if (token) return token;
         throw new ParserError('Unexpected end of input.');
     }
 
-    private peekNextToken(): Token {
+    private peekToken(): Token {
         return this.tokens[0];
     }
 }

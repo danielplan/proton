@@ -10,19 +10,19 @@ This snippet creates a basic user interface
 frame mobile {
     home: LandingPage(),
     size: 9/16,
-    background: #fff,
+    background: #fff
 }
 
 component LandingPage() {
     children: [
         Headline (
             title: "Welcome to proton",
-            subtitle: "Let's get started",
+            subtitle: "Let's get started"
         ),
         Text("This is a proton example"),
         Button(
             text: "Sign Up",
-            link: SignUpPage(),
+            link: SignUpPage()
         )
     ]
 }
@@ -30,13 +30,13 @@ component LandingPage() {
 component SignUpPage() {
     children: [
         Headline (
-            title: "Sign Up"
+            title: "Sign Up",
             subtitle: "Let's get started"
         ),
         Text("Sign up"),
         Box(
             background: #fff,
-            height: 200px,
+            height: 200px
         )
     ]
 }
@@ -56,7 +56,7 @@ component Button (text, link) {
         background: #fff,
         border-radius: 4px,
         padding: 8px 16px,
-        cursor: pointer,
+        cursor: pointer
     }
     events: {
         click: navigateTo(link)
