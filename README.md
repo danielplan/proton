@@ -48,7 +48,7 @@ component Headline (title, subtitle) {
     ]
 }
 
-component Button (text, link) {
+component Button (text, link) from Stack() {
     children: [
         Text(text: text, size: 1)
     ],
@@ -59,7 +59,7 @@ component Button (text, link) {
         cursor: pointer
     },
     events: {
-        click: navigate -> SignupPage()
+        click: navigate -> SignUpPage()
         hover: style -> {
             background: #eee
         }
