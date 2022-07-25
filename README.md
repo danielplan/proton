@@ -8,7 +8,7 @@ This snippet creates a basic user interface
 
 ```proton
 frame mobile {
-    home: LandingPage(),
+    initial: LandingPage(),
     size: 9/16,
     background: #fff
 }
@@ -51,23 +51,33 @@ component Headline (title, subtitle) {
 component Button (text, link) {
     children: [
         Text(text: text, size: 1)
-    ]
+    ],
     styles: {
         background: #fff,
         border-radius: 4px,
         padding: 8px 16px,
         cursor: pointer
-    }
+    },
     events: {
-        click: navigateTo(link)
+        click: navigate -> SignupPage()
+        hover: style -> {
+            background: #eee
+        }
     }
 }
 ```
 
-Primitive components
+## General overview
+
+### Primitive layouts
+
+-   Column (default)
+-   Row
+-   Grid
+-   Stack
+
+### Primitive components
 
 -   Text
 -   Box
--   Ellipsis
 -   Image
--   Columns (flexbox)
