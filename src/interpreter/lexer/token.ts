@@ -49,6 +49,8 @@ export default class Token {
                 return '%';
             case TokenType.COLOR:
                 return 'COLOR';
+            case TokenType.FROM:
+                return 'FROM';
             default:
                 throw new Error('Unknown token type');
         }
@@ -79,4 +81,6 @@ export enum TokenType {
     IDENTIFIER,
     COLOR,
     UNIT,
+    ARROW,
+    FROM,
 }

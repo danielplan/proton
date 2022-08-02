@@ -8,6 +8,9 @@ import StringNode from '../src/interpreter/parser/ast/string-node';
 import IdentifierNode from '../src/interpreter/parser/ast/identifier-node';
 import ColorNode from '../src/interpreter/parser/ast/color-node';
 import RatioNode from '../src/interpreter/parser/ast/ratio-node';
+import CallNode from '../src/interpreter/parser/ast/call-node';
+import ValueListNode from '../src/interpreter/parser/ast/value-list-node';
+import ComponentNode from '../src/interpreter/parser/ast/component-node';
 
 describe('Parser', () => {
     it('should parse top-level statements', () => {
@@ -204,5 +207,207 @@ describe('Parser', () => {
         expect(right).toBeInstanceOf(NumberNode);
         const nRight = right as NumberNode;
         expect(nRight.value).toBe(2);
+    });
+
+    it('should parse nested key-value-pairs', () => {
+        const tokens = new Lexer('frame foo { key: { key2: 20px } }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+
+        const kvpNode = fNode.keyValuePairs as KeyValuePairsNode;
+        expect(kvpNode.pairs.size).toBe(1);
+
+        const kvp = kvpNode.pairs;
+        const kvp2 = kvp.get('key');
+        expect(kvp2).toBeInstanceOf(KeyValuePairsNode);
+
+        const kvp3 = kvp2 as KeyValuePairsNode;
+        expect(kvp3.pairs.size).toBe(1);
+
+        const kvp4 = kvp3.pairs;
+        const kvp5 = kvp4.get('key2');
+        expect(kvp5).toBeInstanceOf(NumberNode);
+        const nKvp5 = kvp5 as NumberNode;
+        expect(nKvp5.value).toBe(20);
+    });
+
+    it('should parse calls', () => {
+        const tokens = new Lexer('frame foo { key: call(bar: 10) }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+
+        const kvpNode = fNode.keyValuePairs as KeyValuePairsNode;
+        expect(kvpNode.pairs.size).toBe(1);
+
+        const kvp = kvpNode.pairs;
+        const call = kvp.get('key');
+        expect(call).toBeInstanceOf(CallNode);
+
+        const cCall = call as CallNode;
+        expect(cCall.left.name).toBe('call');
+        expect(cCall.right.pairs.size).toBe(1);
+
+        const arg = cCall.right.pairs.get('bar');
+        expect(arg).toBeInstanceOf(NumberNode);
+        const nArg = arg as NumberNode;
+        expect(nArg.value).toBe(10);
+    });
+
+    it('should parse nested calls', () => {
+        const tokens = new Lexer('frame foo { key: call(bar: call(baz: 10)) }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+
+        const kvpNode = fNode.keyValuePairs as KeyValuePairsNode;
+        expect(kvpNode.pairs.size).toBe(1);
+
+        const kvp = kvpNode.pairs;
+        const call = kvp.get('key');
+        expect(call).toBeInstanceOf(CallNode);
+
+        const cCall = call as CallNode;
+        expect(cCall.left.name).toBe('call');
+        expect(cCall.right.pairs.size).toBe(1);
+
+        const arg = cCall.right.pairs.get('bar');
+        expect(arg).toBeInstanceOf(CallNode);
+
+        const cArg = arg as CallNode;
+        expect(cArg.left.name).toBe('call');
+        expect(cArg.right.pairs.size).toBe(1);
+
+        const arg2 = cArg.right.pairs.get('baz');
+        expect(arg2).toBeInstanceOf(NumberNode);
+        const nArg2 = arg2 as NumberNode;
+        expect(nArg2.value).toBe(10);
+    });
+
+    it('should parse value-lists', () => {
+        const tokens = new Lexer('frame foo { key: [10, 20, 30] }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+
+        const kvpNode = fNode.keyValuePairs as KeyValuePairsNode;
+        expect(kvpNode.pairs.size).toBe(1);
+
+        const kvp = kvpNode.pairs;
+        const list = kvp.get('key');
+        expect(list).toBeInstanceOf(ValueListNode);
+
+        const vList = list as ValueListNode;
+        expect(vList.children.length).toBe(3);
+
+        const v1 = vList.children[0];
+        expect(v1).toBeInstanceOf(NumberNode);
+        const nV1 = v1 as NumberNode;
+
+        const v2 = vList.children[1];
+        expect(v2).toBeInstanceOf(NumberNode);
+        const nV2 = v2 as NumberNode;
+
+        const v3 = vList.children[2];
+        expect(v3).toBeInstanceOf(NumberNode);
+        const nV3 = v3 as NumberNode;
+
+        expect(nV1.value).toBe(10);
+        expect(nV2.value).toBe(20);
+        expect(nV3.value).toBe(30);
+    });
+
+    it('should parse components', () => {
+        const tokens = new Lexer('component Foo from Row() { }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(ComponentNode);
+
+        const cNode = node as ComponentNode;
+        expect(cNode.identifier.name).toBe('Foo');
+
+        expect(cNode.layout).toBeInstanceOf(CallNode);
+        const cCall = cNode.layout as CallNode;
+
+        expect(cCall.left.name).toBe('Row');
+        expect(cCall.right).toBeNull();
+    });
+
+    it('should parse components with arguments', () => {
+        const tokens = new Lexer('component Foo from Row(foo: 10, bar: 20) { }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(ComponentNode);
+
+        const cNode = node as ComponentNode;
+        expect(cNode.identifier.name).toBe('Foo');
+
+        expect(cNode.layout).toBeInstanceOf(CallNode);
+        const cCall = cNode.layout as CallNode;
+
+        expect(cCall.left.name).toBe('Row');
+        expect(cCall.right.pairs.size).toBe(2);
+
+        const p1 = cCall.right.pairs.get('foo');
+        expect(p1).toBeInstanceOf(NumberNode);
+        const nP1 = p1 as NumberNode;
+        expect(nP1.value).toBe(10);
+
+        const p2 = cCall.right.pairs.get('bar');
+        expect(p2).toBeInstanceOf(NumberNode);
+        const nP2 = p2 as NumberNode;
+        expect(nP2.value).toBe(20);
+    });
+
+    it('should parse components with content', () => {
+        const tokens = new Lexer('component Foo from Row() { foo: 10 }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(ComponentNode);
+
+        const cNode = node as ComponentNode;
+        expect(cNode.identifier.name).toBe('Foo');
+
+        expect(cNode.layout).toBeInstanceOf(CallNode);
+        const cCall = cNode.layout as CallNode;
+
+        expect(cCall.left.name).toBe('Row');
+        expect(cCall.right).toBeNull();
+
+        expect(cNode.keyValuePairs).toBeInstanceOf(KeyValuePairsNode);
+        const cKvp = cNode.keyValuePairs as KeyValuePairsNode;
+
+        expect(cKvp.pairs.size).toBe(1);
+        const cKvpPair = cKvp.pairs.get('foo');
+        expect(cKvpPair).toBeInstanceOf(NumberNode);
+        const cKvpPairNumber = cKvpPair as NumberNode;
+        expect(cKvpPairNumber.value).toBe(10);
     });
 });

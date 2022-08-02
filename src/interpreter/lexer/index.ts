@@ -10,7 +10,9 @@ export default class Lexer {
     static fixedTokens = new Map<string, TokenType>([
         ['component', TokenType.COMPONENT],
         ['frame', TokenType.FRAME],
+        ['from', TokenType.FROM],
         ['px', TokenType.UNIT],
+        ['=>', TokenType.ARROW],
         ['+', TokenType.PLUS],
         ['-', TokenType.MINUS],
         ['*', TokenType.MULTIPLY],

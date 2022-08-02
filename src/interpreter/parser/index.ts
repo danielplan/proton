@@ -9,6 +9,9 @@ import IdentifierNode from './ast/identifier-node';
 import StringNode from './ast/string-node';
 import ColorNode from './ast/color-node';
 import RatioNode from './ast/ratio-node';
+import CallNode from './ast/call-node';
+import ValueListNode from './ast/value-list-node';
+import ComponentNode from './ast/component-node';
 
 export default class Parser {
     tokens: Token[];
@@ -19,7 +22,7 @@ export default class Parser {
     }
 
     // PROGRAM ::= TOP-LEVEL-DECLARATIONS
-    parse(): RootNode {
+    public parse(): RootNode {
         const root = new RootNode();
         const children = this.parseTopLevelDeclarations(root);
         root.children = children;
@@ -55,23 +58,37 @@ export default class Parser {
         if (this.consumeToken().type !== TokenType.LEFT_BRACE) throw new ParserError('Expected "{"');
 
         const keyValuePairs = this.parseKeyValuePairs();
-        if (this.consumeToken().type !== TokenType.RIGHT_BRACE) {
-            throw new ParserError('Expected "}"');
-        }
 
         return new FrameNode(nameToken.lexeme, keyValuePairs, root);
     }
 
-    // COMPONENT-DECLARATION ::= 'component' IDENTIFIER '{' KEY-VALUE-PAIRS '}'
-    private parseComponentDeclaration(root: Node): Node {
-        throw new Error('Method not implemented.');
+    // COMPONENT-DECLARATION ::= 'component' IDENTIFIER 'from' CALL '{' KEY-VALUE-PAIRS '}'
+    private parseComponentDeclaration(root: Node): ComponentNode {
+        const identifier = this.consumeToken();
+        if (identifier.type !== TokenType.IDENTIFIER)
+            throw new ParserError('Expected component name, got: ' + identifier.getTypeString());
+        const fromToken = this.consumeToken();
+        if (fromToken.type !== TokenType.FROM)
+            throw new ParserError('Expected "from", got: ' + fromToken.getTypeString());
+
+        const call = this.parseIdentifier();
+        if (!(call instanceof CallNode)) throw new ParserError('Expected call, got: ' + call);
+
+        if (this.consumeToken().type !== TokenType.LEFT_BRACE) throw new ParserError('Expected "{"');
+
+        const keyValuePairs = this.parseKeyValuePairs();
+
+        return new ComponentNode(identifier.lexeme, call, keyValuePairs);
     }
 
     // KEY-VALUE-PAIRS ::= KEY-VALUE-PAIR | KEY-VALUE-PAIRS ',' KEY-VALUE-PAIR | EMPTY
     // KEY-VALUE-PAIR ::= IDENTIFIER ':' VALUE
     private parseKeyValuePairs(): KeyValuePairsNode | null {
         const nextToken = this.peekToken();
-        if (nextToken.type === TokenType.RIGHT_BRACE) return null;
+        if (nextToken.type === TokenType.RIGHT_BRACE || nextToken.type === TokenType.RIGHT_PAREN) {
+            this.consumeToken();
+            return null;
+        }
         const node = new KeyValuePairsNode();
         while (true) {
             const identifier = this.consumeToken();
@@ -83,31 +100,53 @@ export default class Parser {
 
             node.add(identifier.lexeme, this.parseValue());
 
-            if (this.peekToken().type === TokenType.RIGHT_BRACE) break;
+            if (this.peekToken().type === TokenType.RIGHT_BRACE || this.peekToken().type === TokenType.RIGHT_PAREN)
+                break;
             const comma = this.consumeToken();
             if (comma.type !== TokenType.COMMA) throw new ParserError('Expected ",", got: ' + comma.getTypeString());
+        }
+        const lastToken = this.consumeToken();
+        if (lastToken.type !== TokenType.RIGHT_BRACE && lastToken.type !== TokenType.RIGHT_PAREN) {
+            throw new ParserError('Expected "}" or ")"');
         }
         return node;
     }
 
-    // VALUE ::= NUMBER | NUMBER UNIT | COLOR | IDENTIFIER | RATIO | STRING
+    // VALUE ::= NUMBER | NUMBER UNIT | COLOR | IDENTIFIER | RATIO | STRING | [ VALUE_LIST ] | { KEY-VALUE-PAIRS } | CALL
     private parseValue(): Node {
         const token = this.peekToken();
         switch (token.type) {
             case TokenType.NUMBER:
                 return this.parseNumber();
             case TokenType.IDENTIFIER:
-                this.consumeToken();
-                return new IdentifierNode(token.lexeme);
+                return this.parseIdentifier();
             case TokenType.STRING:
                 this.consumeToken();
                 return new StringNode(token.lexeme.substring(1, token.lexeme.length - 1));
             case TokenType.COLOR:
                 this.consumeToken();
                 return new ColorNode(token.lexeme);
+            case TokenType.LEFT_BRACE:
+                this.consumeToken();
+                return this.parseKeyValuePairs()!;
+            case TokenType.LEFT_BRACKET:
+                return this.parseValueList();
             default:
                 throw new ParserError('Expected value, got: ' + token.getTypeString());
         }
+    }
+    private parseValueList(): ValueListNode {
+        const values = [];
+        this.consumeToken();
+        do {
+            if (this.peekToken().type === TokenType.COMMA) this.consumeToken();
+            values.push(this.parseValue());
+            if (this.peekToken().type === TokenType.RIGHT_BRACKET) {
+                this.consumeToken();
+                break;
+            }
+        } while (this.peekToken().type === TokenType.COMMA);
+        return new ValueListNode(values);
     }
 
     private parseNumber(): NumberNode | RatioNode {
@@ -132,6 +171,15 @@ export default class Parser {
         }
 
         return new NumberNode(number, unit);
+    }
+
+    private parseIdentifier(): IdentifierNode | CallNode {
+        const token = this.consumeToken();
+        const identifierNode = new IdentifierNode(token.lexeme);
+        if (this.peekToken().type !== TokenType.LEFT_PAREN) return identifierNode;
+        this.consumeToken();
+        const keyValuePairs = this.parseKeyValuePairs();
+        return new CallNode(identifierNode, keyValuePairs!);
     }
 
     private consumeToken(): Token {
