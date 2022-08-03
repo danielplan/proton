@@ -1,13 +1,13 @@
-import BinaryNode from './binary-node';
+import Node from './node';
 import IdentifierNode from './identifier-node';
-import KeyValuePairsNode from './key-value-pairs-node';
+import KeyValueListNode from './key-value-list-node';
 
-export default class CallNode extends BinaryNode {
-    left: IdentifierNode;
-    right: KeyValuePairsNode;
-    constructor(identifier: IdentifierNode, args: KeyValuePairsNode) {
+export default class CallNode extends Node {
+    identifier: IdentifierNode;
+    keyValueList: KeyValueListNode;
+    constructor(identifier: string, args: KeyValueListNode) {
         super();
-        this.left = identifier;
-        this.right = args;
+        this.identifier = new IdentifierNode(identifier);
+        this.keyValueList = args;
     }
 }

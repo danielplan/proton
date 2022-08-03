@@ -3,7 +3,7 @@ import RootNode from './ast/root-node';
 import Node from './ast/node';
 import ParserError from './parser-error';
 import FrameNode from './ast/frame-node';
-import KeyValuePairsNode from './ast/key-value-pairs-node';
+import KeyValueListNode from './ast/key-value-list-node';
 import NumberNode from './ast/number-node';
 import IdentifierNode from './ast/identifier-node';
 import StringNode from './ast/string-node';
@@ -40,7 +40,7 @@ export default class Parser {
 
     // TOP-LEVEL-DECLARATION ::= FRAME-DECLARATION | COMPONENT-DECLARATION
     private parseTopLevelDeclaration(root: Node): Node {
-        const token = this.consumeToken();
+        const token = this.peekToken();
 
         switch (token.type) {
             case TokenType.FRAME:
@@ -54,16 +54,32 @@ export default class Parser {
 
     // FRAME-DECLARATION ::= 'frame' IDENTIFIER '{' KEY-VALUE-PAIRS '}'
     private parseFrameDeclaration(root: Node): Node {
+        const frame = this.consumeToken();
+        if (frame.type !== TokenType.FRAME) throw new ParserError('Expected "frame", got: ' + frame.getTypeString());
+
         const nameToken = this.consumeToken();
-        if (this.consumeToken().type !== TokenType.LEFT_BRACE) throw new ParserError('Expected "{"');
+        if (nameToken.type !== TokenType.IDENTIFIER)
+            throw new ParserError('Expected frame name, got: ' + nameToken.getTypeString());
+
+        const leftBrace = this.consumeToken();
+        if (leftBrace.type !== TokenType.LEFT_BRACE)
+            throw new ParserError('Expected "{", got ' + leftBrace.getTypeString());
 
         const keyValuePairs = this.parseKeyValuePairs();
+
+        const rightBrace = this.consumeToken();
+        if (rightBrace.type !== TokenType.RIGHT_BRACE)
+            throw new ParserError('Expected "}", got: ' + rightBrace.getTypeString());
 
         return new FrameNode(nameToken.lexeme, keyValuePairs, root);
     }
 
     // COMPONENT-DECLARATION ::= 'component' IDENTIFIER 'from' CALL '{' KEY-VALUE-PAIRS '}'
     private parseComponentDeclaration(root: Node): ComponentNode {
+        const component = this.consumeToken();
+        if (component.type !== TokenType.COMPONENT)
+            throw new ParserError('Expected "component", got: ' + component.getTypeString());
+
         const identifier = this.consumeToken();
         if (identifier.type !== TokenType.IDENTIFIER)
             throw new ParserError('Expected component name, got: ' + identifier.getTypeString());
@@ -71,45 +87,50 @@ export default class Parser {
         if (fromToken.type !== TokenType.FROM)
             throw new ParserError('Expected "from", got: ' + fromToken.getTypeString());
 
-        const call = this.parseIdentifier();
-        if (!(call instanceof CallNode)) throw new ParserError('Expected call, got: ' + call);
+        const call = this.parseCall();
 
-        if (this.consumeToken().type !== TokenType.LEFT_BRACE) throw new ParserError('Expected "{"');
+        const leftBrace = this.consumeToken();
+        if (leftBrace.type !== TokenType.LEFT_BRACE)
+            throw new ParserError('Expected "{", got: ' + leftBrace.getTypeString());
 
         const keyValuePairs = this.parseKeyValuePairs();
 
-        return new ComponentNode(identifier.lexeme, call, keyValuePairs);
+        const rightBrace = this.consumeToken();
+        if (rightBrace.type !== TokenType.RIGHT_BRACE)
+            throw new ParserError('Expected "}", got: ' + rightBrace.getTypeString());
+
+        return new ComponentNode(identifier.lexeme, call, keyValuePairs, root);
     }
 
     // KEY-VALUE-PAIRS ::= KEY-VALUE-PAIR | KEY-VALUE-PAIRS ',' KEY-VALUE-PAIR | EMPTY
-    // KEY-VALUE-PAIR ::= IDENTIFIER ':' VALUE
-    private parseKeyValuePairs(): KeyValuePairsNode | null {
-        const nextToken = this.peekToken();
-        if (nextToken.type === TokenType.RIGHT_BRACE || nextToken.type === TokenType.RIGHT_PAREN) {
-            this.consumeToken();
-            return null;
-        }
-        const node = new KeyValuePairsNode();
+    private parseKeyValuePairs(): KeyValueListNode {
+        const result = new KeyValueListNode();
+
+        const opener = this.peekToken();
+        if (opener.type === TokenType.RIGHT_BRACE || opener.type === TokenType.RIGHT_PAREN)
+            //is empty
+            return result;
+
         while (true) {
-            const identifier = this.consumeToken();
-            if (identifier.type !== TokenType.IDENTIFIER)
-                throw new ParserError('Expected key, got: ' + identifier.getTypeString());
-
-            const colon = this.consumeToken();
-            if (colon.type !== TokenType.COLON) throw new ParserError('Expected ":", got: ' + colon.getTypeString());
-
-            node.add(identifier.lexeme, this.parseValue());
-
+            this.parseKeyValuePair(result);
             if (this.peekToken().type === TokenType.RIGHT_BRACE || this.peekToken().type === TokenType.RIGHT_PAREN)
                 break;
             const comma = this.consumeToken();
             if (comma.type !== TokenType.COMMA) throw new ParserError('Expected ",", got: ' + comma.getTypeString());
         }
-        const lastToken = this.consumeToken();
-        if (lastToken.type !== TokenType.RIGHT_BRACE && lastToken.type !== TokenType.RIGHT_PAREN) {
-            throw new ParserError('Expected "}" or ")"');
-        }
-        return node;
+        return result;
+    }
+
+    // KEY-VALUE-PAIR ::= IDENTIFIER ':' VALUE
+    private parseKeyValuePair(list: KeyValueListNode): void {
+        const identifier = this.consumeToken();
+        if (identifier.type !== TokenType.IDENTIFIER)
+            throw new ParserError('Expected key, got: ' + identifier.getTypeString());
+
+        const colon = this.consumeToken();
+        if (colon.type !== TokenType.COLON) throw new ParserError('Expected ":", got: ' + colon.getTypeString());
+
+        list.addChild(identifier.lexeme, this.parseValue());
     }
 
     // VALUE ::= NUMBER | NUMBER UNIT | COLOR | IDENTIFIER | RATIO | STRING | [ VALUE_LIST ] | { KEY-VALUE-PAIRS } | CALL
@@ -119,6 +140,7 @@ export default class Parser {
             case TokenType.NUMBER:
                 return this.parseNumber();
             case TokenType.IDENTIFIER:
+                if (this.peekToken(1).type === TokenType.LEFT_PAREN) return this.parseCall();
                 return this.parseIdentifier();
             case TokenType.STRING:
                 this.consumeToken();
@@ -127,25 +149,39 @@ export default class Parser {
                 this.consumeToken();
                 return new ColorNode(token.lexeme);
             case TokenType.LEFT_BRACE:
-                this.consumeToken();
-                return this.parseKeyValuePairs()!;
+                const leftBrace = this.consumeToken();
+                if (leftBrace.type !== TokenType.LEFT_BRACE)
+                    throw new ParserError('Expected "{", got: ' + leftBrace.getTypeString());
+
+                const result = this.parseKeyValuePairs();
+
+                const rightBrace = this.consumeToken();
+                if (rightBrace.type !== TokenType.RIGHT_BRACE)
+                    throw new ParserError('Expected "}", got: ' + rightBrace.getTypeString());
+                return result;
             case TokenType.LEFT_BRACKET:
-                return this.parseValueList();
+                const leftBracket = this.consumeToken();
+                if (leftBracket.type !== TokenType.LEFT_BRACKET)
+                    throw new ParserError('Expected "[", got: ' + leftBracket.getTypeString());
+
+                const valueList = this.parseValueList();
+
+                const rightBracket = this.consumeToken();
+                if (rightBracket.type !== TokenType.RIGHT_BRACKET)
+                    throw new ParserError('Expected "]", got: ' + rightBracket.getTypeString());
+                return valueList;
             default:
                 throw new ParserError('Expected value, got: ' + token.getTypeString());
         }
     }
     private parseValueList(): ValueListNode {
         const values = [];
-        this.consumeToken();
-        do {
-            if (this.peekToken().type === TokenType.COMMA) this.consumeToken();
+        while (true) {
             values.push(this.parseValue());
-            if (this.peekToken().type === TokenType.RIGHT_BRACKET) {
-                this.consumeToken();
-                break;
-            }
-        } while (this.peekToken().type === TokenType.COMMA);
+            if (this.peekToken().type === TokenType.RIGHT_BRACKET) break;
+            const comma = this.consumeToken();
+            if (comma.type !== TokenType.COMMA) throw new ParserError('Expected ",", got: ' + comma.getTypeString());
+        }
         return new ValueListNode(values);
     }
 
@@ -173,13 +209,29 @@ export default class Parser {
         return new NumberNode(number, unit);
     }
 
-    private parseIdentifier(): IdentifierNode | CallNode {
+    private parseIdentifier(): IdentifierNode {
         const token = this.consumeToken();
-        const identifierNode = new IdentifierNode(token.lexeme);
-        if (this.peekToken().type !== TokenType.LEFT_PAREN) return identifierNode;
-        this.consumeToken();
-        const keyValuePairs = this.parseKeyValuePairs();
-        return new CallNode(identifierNode, keyValuePairs!);
+        if (token.type !== TokenType.IDENTIFIER)
+            throw new ParserError('Expected identifier, got: ' + token.getTypeString());
+        return new IdentifierNode(token.lexeme);
+    }
+
+    private parseCall(): CallNode {
+        const identifier = this.consumeToken();
+        if (identifier.type !== TokenType.IDENTIFIER)
+            throw new ParserError('Expected identifier, got: ' + identifier.getTypeString());
+
+        const leftParen = this.consumeToken();
+        if (leftParen.type !== TokenType.LEFT_PAREN)
+            throw new ParserError('Expected "(", got: ' + leftParen.getTypeString());
+
+        const args = this.parseKeyValuePairs();
+
+        const rightParen = this.consumeToken();
+        if (rightParen.type !== TokenType.RIGHT_PAREN)
+            throw new ParserError('Expected ")", got: ' + rightParen.getTypeString());
+
+        return new CallNode(identifier.lexeme, args);
     }
 
     private consumeToken(): Token {
@@ -188,7 +240,7 @@ export default class Parser {
         throw new ParserError('Unexpected end of input.');
     }
 
-    private peekToken(): Token {
-        return this.tokens[0];
+    private peekToken(amount: number = 0): Token {
+        return this.tokens[amount];
     }
 }

@@ -1,9 +1,9 @@
-import NaryNode from './nary-node';
 import Node from './node';
 
-export default class ValueListNode extends NaryNode {
-    constructor(public values: Node[]) {
+export default class ValueListNode extends Node {
+    values: Node[];
+    constructor(values: Node[]) {
         super();
-        this.children = values;
+        this.values = values;
     }
 }

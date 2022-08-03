@@ -1,17 +1,17 @@
 import CallNode from './call-node';
 import IdentifierNode from './identifier-node';
-import KeyValuePairsNode from './key-value-pairs-node';
+import KeyValueListNode from './key-value-list-node';
 import Node from './node';
 
 export default class ComponentNode extends Node {
     identifier: IdentifierNode;
     layout: CallNode;
-    keyValuePairs: KeyValuePairsNode | null;
+    keyValueList: KeyValueListNode;
 
-    constructor(name: string, layout: CallNode, keyValuePairs: KeyValuePairsNode | null) {
+    constructor(name: string, layout: CallNode, keyValueList: KeyValueListNode, parent: Node) {
         super();
         this.identifier = new IdentifierNode(name);
         this.layout = layout;
-        this.keyValuePairs = keyValuePairs;
+        this.keyValueList = keyValueList;
     }
 }

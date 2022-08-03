@@ -51,7 +51,12 @@ export default class Token {
                 return 'COLOR';
             case TokenType.FROM:
                 return 'FROM';
+            case TokenType.COMPONENT:
+                return 'COMPONENT';
+            case TokenType.FRAME:
+                return 'FRAME';
             default:
+                console.log('Unknown token type: ' + this.lexeme);
                 throw new Error('Unknown token type');
         }
     }
