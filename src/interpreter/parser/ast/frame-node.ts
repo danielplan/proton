@@ -4,12 +4,11 @@ import KeyValueListNode from './key-value-list-node';
 
 export default class FrameNode extends Node {
     identifier: IdentifierNode;
-    keyValueList: KeyValueListNode;
+    keyValueList: KeyValueListNode | null = null;
 
-    constructor(name: string, keyValueList: KeyValueListNode, parent: Node) {
+    constructor(name: string, parent: Node) {
         super();
-        this.identifier = new IdentifierNode(name);
-        this.keyValueList = keyValueList;
+        this.identifier = new IdentifierNode(name, this);
         this.parent = parent;
     }
 }

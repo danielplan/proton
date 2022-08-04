@@ -5,13 +5,12 @@ import Node from './node';
 
 export default class ComponentNode extends Node {
     identifier: IdentifierNode;
-    layout: CallNode;
-    keyValueList: KeyValueListNode;
+    layout: CallNode | null = null;
+    keyValueList: KeyValueListNode | null = null;
 
-    constructor(name: string, layout: CallNode, keyValueList: KeyValueListNode, parent: Node) {
+    constructor(name: string, parent: Node) {
         super();
-        this.identifier = new IdentifierNode(name);
-        this.layout = layout;
-        this.keyValueList = keyValueList;
+        this.identifier = new IdentifierNode(name, this);
+        this.parent = parent;
     }
 }

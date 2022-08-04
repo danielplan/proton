@@ -2,8 +2,9 @@ import Node from './node';
 
 export default class ValueListNode extends Node {
     values: Node[];
-    constructor(values: Node[]) {
+    constructor(parent: Node) {
         super();
-        this.values = values;
+        this.values = [];
+        this.parent = parent;
     }
 }

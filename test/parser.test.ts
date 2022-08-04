@@ -21,7 +21,7 @@ describe('Parser', () => {
         expect(node).toBeInstanceOf(FrameNode);
         const fNode = node as FrameNode;
         expect(fNode.identifier.name).toBe('foo');
-        expect(fNode.keyValueList.children.size).toBe(0);
+        expect(fNode.keyValueList!.children.size).toBe(0);
 
         const tokens2 = new Lexer('frame foo { } frame test { }').tokenize();
         const parser2 = new Parser(tokens2);
@@ -30,12 +30,12 @@ describe('Parser', () => {
         expect(node2).toBeInstanceOf(FrameNode);
         const fNode2 = node2 as FrameNode;
         expect(fNode2.identifier.name).toBe('foo');
-        expect(fNode2.keyValueList.children.size).toBe(0);
+        expect(fNode2.keyValueList!.children.size).toBe(0);
         const node3 = result2.children[1];
         expect(node3).toBeInstanceOf(FrameNode);
         const fNode3 = node3 as FrameNode;
         expect(fNode3.identifier.name).toBe('test');
-        expect(fNode3.keyValueList.children.size).toBe(0);
+        expect(fNode3.keyValueList!.children.size).toBe(0);
     });
 
     it('should parse error on invalid top-level statement', () => {
@@ -257,9 +257,9 @@ describe('Parser', () => {
 
         const cCall = call as CallNode;
         expect(cCall.identifier.name).toBe('call');
-        expect(cCall.keyValueList.children.size).toBe(1);
+        expect(cCall.keyValueList!.children.size).toBe(1);
 
-        const arg = cCall.keyValueList.children.get('bar');
+        const arg = cCall.keyValueList!.children.get('bar');
         expect(arg).toBeInstanceOf(NumberNode);
         const nArg = arg as NumberNode;
         expect(nArg.value).toBe(10);
@@ -285,16 +285,16 @@ describe('Parser', () => {
 
         const cCall = call as CallNode;
         expect(cCall.identifier.name).toBe('call');
-        expect(cCall.keyValueList.children.size).toBe(1);
+        expect(cCall.keyValueList!.children.size).toBe(1);
 
-        const arg = cCall.keyValueList.children.get('bar');
+        const arg = cCall.keyValueList!.children.get('bar');
         expect(arg).toBeInstanceOf(CallNode);
 
         const cArg = arg as CallNode;
         expect(cArg.identifier.name).toBe('call');
-        expect(cArg.keyValueList.children.size).toBe(1);
+        expect(cArg.keyValueList!.children.size).toBe(1);
 
-        const arg2 = cArg.keyValueList.children.get('baz');
+        const arg2 = cArg.keyValueList!.children.get('baz');
         expect(arg2).toBeInstanceOf(NumberNode);
         const nArg2 = arg2 as NumberNode;
         expect(nArg2.value).toBe(10);
@@ -353,7 +353,7 @@ describe('Parser', () => {
         const cCall = cNode.layout as CallNode;
 
         expect(cCall.identifier.name).toBe('Row');
-        expect(cCall.keyValueList.children.size).toBe(0);
+        expect(cCall.keyValueList!.children.size).toBe(0);
     });
 
     it('should parse components with arguments', () => {
@@ -371,14 +371,14 @@ describe('Parser', () => {
         const cCall = cNode.layout as CallNode;
 
         expect(cCall.identifier.name).toBe('Row');
-        expect(cCall.keyValueList.children.size).toBe(2);
+        expect(cCall.keyValueList!.children.size).toBe(2);
 
-        const p1 = cCall.keyValueList.children.get('foo');
+        const p1 = cCall.keyValueList!.children.get('foo');
         expect(p1).toBeInstanceOf(NumberNode);
         const nP1 = p1 as NumberNode;
         expect(nP1.value).toBe(10);
 
-        const p2 = cCall.keyValueList.children.get('bar');
+        const p2 = cCall.keyValueList!.children.get('bar');
         expect(p2).toBeInstanceOf(NumberNode);
         const nP2 = p2 as NumberNode;
         expect(nP2.value).toBe(20);
@@ -408,5 +408,38 @@ describe('Parser', () => {
         expect(cKvpPair).toBeInstanceOf(NumberNode);
         const cKvpPairNumber = cKvpPair as NumberNode;
         expect(cKvpPairNumber.value).toBe(10);
+    });
+
+    it('should parse parent nodes correctly', () => {
+        const tokens = new Lexer('frame foo { key: call(bar: 10) }').tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(FrameNode);
+
+        const fNode = node as FrameNode;
+        expect(fNode.identifier.name).toBe('foo');
+
+        const kvpNode = fNode.keyValueList as KeyValueListNode;
+        expect(kvpNode.children.size).toBe(1);
+
+        const kvp = kvpNode.children;
+        const call = kvp.get('key');
+        expect(call).toBeInstanceOf(CallNode);
+
+        const cCall = call as CallNode;
+        expect(cCall.identifier.name).toBe('call');
+        expect(cCall.keyValueList!.children.size).toBe(1);
+
+        const cKvp = cCall.keyValueList!.children;
+        const cKvpPair = cKvp.get('bar');
+        expect(cKvpPair).toBeInstanceOf(NumberNode);
+        const cKvpPairNumber = cKvpPair as NumberNode;
+        expect(cKvpPairNumber.value).toBe(10);
+
+        expect(cCall.parent).toBeInstanceOf(KeyValueListNode);
+        expect(cKvpPairNumber.parent).toBeInstanceOf(KeyValueListNode);
+        expect(fNode.identifier.parent).toBeInstanceOf(FrameNode);
     });
 });

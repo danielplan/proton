@@ -5,5 +5,6 @@ export default class RootNode extends Node {
     constructor() {
         super();
         this.children = [];
+        this.parent = null;
     }
 }
