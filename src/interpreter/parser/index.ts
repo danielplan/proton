@@ -12,6 +12,8 @@ import RatioNode from './ast/ratio-node';
 import CallNode from './ast/call-node';
 import ValueListNode from './ast/value-list-node';
 import ComponentNode from './ast/component-node';
+import IdentifierListNode from './ast/identifier-list-node';
+import ActionNode from './ast/action-node';
 
 export default class Parser {
     tokens: Token[];
@@ -76,7 +78,7 @@ export default class Parser {
         return node;
     }
 
-    // COMPONENT-DECLARATION ::= 'component' IDENTIFIER 'from' CALL '{' KEY-VALUE-PAIRS '}'
+    // COMPONENT-DECLARATION ::= 'component' IDENTIFIER '(' OPT-IDENTIFIER-LIST ')' 'from' CALL '{' KEY-VALUE-PAIRS '}' | 'component' IDENTIFIER '(' OPT-IDENTIFIER-LIST ')' '{' KEY-VALUE-PAIRS '}'
     private parseComponentDeclaration(root: Node): ComponentNode {
         const component = this.consumeToken();
         if (component.type !== TokenType.COMPONENT)
@@ -85,12 +87,25 @@ export default class Parser {
         const identifier = this.consumeToken();
         if (identifier.type !== TokenType.IDENTIFIER)
             throw new ParserError('Expected component name, got: ' + identifier.getTypeString());
-        const fromToken = this.consumeToken();
-        if (fromToken.type !== TokenType.FROM)
-            throw new ParserError('Expected "from", got: ' + fromToken.getTypeString());
+
+        const leftParen = this.consumeToken();
+        if (leftParen.type !== TokenType.LEFT_PAREN)
+            throw new ParserError('Expected "(", got: ' + leftParen.getTypeString());
 
         const node = new ComponentNode(identifier.lexeme, root);
-        node.layout = this.parseCall(node);
+
+        node.args = this.parseOptionalIdentifierList(node);
+
+        const rightParen = this.consumeToken();
+        if (rightParen.type !== TokenType.RIGHT_PAREN)
+            throw new ParserError('Expected ")", got: ' + rightParen.getTypeString());
+
+        if (this.peekToken().type === TokenType.FROM) {
+            const fromToken = this.consumeToken();
+            if (fromToken.type !== TokenType.FROM)
+                throw new ParserError('Expected "from", got: ' + fromToken.getTypeString());
+            node.layout = this.parseCall(node);
+        }
 
         const leftBrace = this.consumeToken();
         if (leftBrace.type !== TokenType.LEFT_BRACE)
@@ -103,6 +118,24 @@ export default class Parser {
             throw new ParserError('Expected "}", got: ' + rightBrace.getTypeString());
 
         return node;
+    }
+    private parseOptionalIdentifierList(parent: ComponentNode): IdentifierListNode | null {
+        if (this.peekToken().type === TokenType.IDENTIFIER) {
+            return this.parseIdentifierList(parent);
+        }
+        return null;
+    }
+
+    // IDENTIFIER-LIST ::= IDENTIFIER | IDENTIFIER ',' IDENTIFIER-LIST
+    private parseIdentifierList(parent: ComponentNode) {
+        const identifiers = [];
+        while (true) {
+            const identifier = this.parseIdentifier(parent);
+            identifiers.push(identifier);
+            if (this.peekToken().type !== TokenType.COMMA) break;
+            this.consumeToken();
+        }
+        return new IdentifierListNode(identifiers, parent);
     }
 
     // KEY-VALUE-PAIRS ::= KEY-VALUE-PAIR | KEY-VALUE-PAIRS ',' KEY-VALUE-PAIR | EMPTY
@@ -136,7 +169,7 @@ export default class Parser {
         list.addChild(identifier.lexeme, this.parseValue(list));
     }
 
-    // VALUE ::= NUMBER | NUMBER UNIT | COLOR | IDENTIFIER | RATIO | STRING | [ VALUE_LIST ] | { KEY-VALUE-PAIRS } | CALL
+    // VALUE ::= NUMBER | NUMBER UNIT | COLOR | IDENTIFIER | RATIO | STRING | [ VALUE_LIST ] | { KEY-VALUE-PAIRS } | CALL | ACTION
     private parseValue(parent: Node): Node {
         const token = this.peekToken();
         switch (token.type) {
@@ -144,6 +177,7 @@ export default class Parser {
                 return this.parseNumber(parent);
             case TokenType.IDENTIFIER:
                 if (this.peekToken(1).type === TokenType.LEFT_PAREN) return this.parseCall(parent);
+                if (this.peekToken(1).type === TokenType.ARROW) return this.parseAction(parent);
                 return this.parseIdentifier(parent);
             case TokenType.STRING:
                 this.consumeToken();
@@ -176,6 +210,19 @@ export default class Parser {
             default:
                 throw new ParserError('Expected value, got: ' + token.getTypeString());
         }
+    }
+
+    // ACTION ::== IDENTIFIER '=>' VALUE
+    private parseAction(parent: Node): Node {
+        const identifier = this.consumeToken();
+        if (identifier.type !== TokenType.IDENTIFIER)
+            throw new ParserError('Expected action, got: ' + identifier.getTypeString());
+
+        const arrow = this.consumeToken();
+        if (arrow.type !== TokenType.ARROW) throw new ParserError('Expected "=>", got: ' + arrow.getTypeString());
+
+        const value = this.parseValue(parent);
+        return new ActionNode(identifier.lexeme, value, parent);
     }
 
     private parseValueList(parent: Node): ValueListNode {

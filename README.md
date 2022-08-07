@@ -59,8 +59,8 @@ component Button (text, link) from Stack() {
         cursor: pointer
     },
     events: {
-        click: navigate -> SignUpPage()
-        hover: style -> {
+        click: navigate => SignUpPage(),
+        hover: style => {
             background: #eee
         }
     }

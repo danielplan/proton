@@ -55,6 +55,8 @@ export default class Token {
                 return 'COMPONENT';
             case TokenType.FRAME:
                 return 'FRAME';
+            case TokenType.ARROW:
+                return '=>';
             default:
                 console.log('Unknown token type: ' + this.lexeme);
                 throw new Error('Unknown token type');

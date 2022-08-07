@@ -11,6 +11,7 @@ import CallNode from '../src/interpreter/parser/ast/call-node';
 import ValueListNode from '../src/interpreter/parser/ast/value-list-node';
 import ComponentNode from '../src/interpreter/parser/ast/component-node';
 import KeyValueListNode from '../src/interpreter/parser/ast/key-value-list-node';
+import ActionNode from '../src/interpreter/parser/ast/action-node';
 
 describe('Parser', () => {
     it('should parse top-level statements', () => {
@@ -339,7 +340,7 @@ describe('Parser', () => {
     });
 
     it('should parse components', () => {
-        const tokens = new Lexer('component Foo from Row() { }').tokenize();
+        const tokens = new Lexer('component Foo() from Row() { }').tokenize();
         const parser = new Parser(tokens);
         const result = parser.parse();
 
@@ -357,7 +358,7 @@ describe('Parser', () => {
     });
 
     it('should parse components with arguments', () => {
-        const tokens = new Lexer('component Foo from Row(foo: 10, bar: 20) { }').tokenize();
+        const tokens = new Lexer('component Foo() from Row(foo: 10, bar: 20) { }').tokenize();
         const parser = new Parser(tokens);
         const result = parser.parse();
 
@@ -385,7 +386,7 @@ describe('Parser', () => {
     });
 
     it('should parse components with content', () => {
-        const tokens = new Lexer('component Foo from Row() { foo: 10 }').tokenize();
+        const tokens = new Lexer('component Foo (test, test2) from Row() { foo: 10 }').tokenize();
         const parser = new Parser(tokens);
         const result = parser.parse();
 
@@ -394,6 +395,11 @@ describe('Parser', () => {
 
         const cNode = node as ComponentNode;
         expect(cNode.identifier.name).toBe('Foo');
+
+        const cArgs = cNode.args;
+        expect(cArgs!.children.length).toBe(2);
+        expect(cArgs!.children[0].name).toBe('test');
+        expect(cArgs!.children[1].name).toBe('test2');
 
         expect(cNode.layout).toBeInstanceOf(CallNode);
         const cCall = cNode.layout as CallNode;
@@ -441,5 +447,102 @@ describe('Parser', () => {
         expect(cCall.parent).toBeInstanceOf(KeyValueListNode);
         expect(cKvpPairNumber.parent).toBeInstanceOf(KeyValueListNode);
         expect(fNode.identifier.parent).toBeInstanceOf(FrameNode);
+    });
+
+    it('should parse actions correctly', () => {
+        const tokens = new Lexer('component Foo() from Row() { click: test => call() }').tokenize();
+
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        const node = result.children[0];
+        expect(node).toBeInstanceOf(ComponentNode);
+
+        const cNode = node as ComponentNode;
+        expect(cNode.identifier.name).toBe('Foo');
+
+        expect(cNode.keyValueList).toBeInstanceOf(KeyValueListNode);
+        const cKvp = cNode.keyValueList as KeyValueListNode;
+
+        expect(cKvp.children.size).toBe(1);
+        const cKvpPair = cKvp.children.get('click');
+        expect(cKvpPair).toBeInstanceOf(ActionNode);
+        const cKvpPairAction = cKvpPair as ActionNode;
+
+        expect(cKvpPairAction.identifier.name).toBe('test');
+        expect(cKvpPairAction.parent).toBeInstanceOf(KeyValueListNode);
+
+        expect(cKvpPairAction.value).toBeInstanceOf(CallNode);
+
+        const cKvpPairActionCall = cKvpPairAction.value as CallNode;
+        expect(cKvpPairActionCall.identifier.name).toBe('call');
+        expect(cKvpPairActionCall.keyValueList).toBeInstanceOf(KeyValueListNode);
+
+        const cKvpPairActionCallKvp = cKvpPairActionCall.keyValueList as KeyValueListNode;
+        expect(cKvpPairActionCallKvp.children.size).toBe(0);
+    });
+
+    it('should parse a correct program', () => {
+        const program = `
+component Headline (title, subtitle) {
+    children: [
+        Text(text: title, size: 2, weight: bold),
+        Text(text: subtitle, size: 1)
+    ]
+}
+
+component Button (text, link) from Stack() {
+    children: [
+        Text(text: text, size: 1)
+    ],
+    styles: {
+        background: #fff,
+        border-radius: 4px,
+        padding: 8px,
+        cursor: pointer
+    },
+    events: {
+        click: navigate => SignUpPage(),
+        hover: style => {
+            background: #eee
+        }
+    }
+}
+        `;
+        const tokens = new Lexer(program).tokenize();
+        const parser = new Parser(tokens);
+        const result = parser.parse();
+
+        expect(result.children.length).toBe(2);
+        expect(result.children[0]).toBeInstanceOf(ComponentNode);
+        expect(result.children[1]).toBeInstanceOf(ComponentNode);
+
+        const c1 = result.children[0] as ComponentNode;
+        expect(c1.identifier.name).toBe('Headline');
+        expect(c1.args!.children.length).toBe(2);
+        expect(c1.keyValueList).toBeInstanceOf(KeyValueListNode);
+
+        const c2 = result.children[1] as ComponentNode;
+        expect(c2.identifier.name).toBe('Button');
+        expect(c2.args!.children.length).toBe(2);
+        expect(c2.layout).toBeInstanceOf(CallNode);
+        expect(c2.keyValueList).toBeInstanceOf(KeyValueListNode);
+
+        const c2Kvp = c2.keyValueList as KeyValueListNode;
+        expect(c2Kvp.children.size).toBe(3);
+        const c2KvpPair = c2Kvp.children.get('events');
+        expect(c2KvpPair).toBeInstanceOf(KeyValueListNode);
+        const c2KvpPairNode = c2KvpPair as KeyValueListNode;
+
+        expect(c2KvpPairNode.children.size).toBe(2);
+        const c2KvpPairNodePair = c2KvpPairNode.children.get('click');
+        expect(c2KvpPairNodePair).toBeInstanceOf(ActionNode);
+
+        const c2KvpPairNodePairAction = c2KvpPairNodePair as ActionNode;
+        expect(c2KvpPairNodePairAction.identifier.name).toBe('navigate');
+        expect(c2KvpPairNodePairAction.value).toBeInstanceOf(CallNode);
+
+        const c2KvpPairNodePairActionCall = c2KvpPairNodePairAction.value as CallNode;
+        expect(c2KvpPairNodePairActionCall.identifier.name).toBe('SignUpPage');
     });
 });
