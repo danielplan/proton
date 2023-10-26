@@ -8,6 +8,9 @@ on:
 jobs:
     test:
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pull-requests: write
         steps:
             - uses: actions/checkout@v2
             - name: Use Node.js 20.x
@@ -20,6 +23,6 @@ jobs:
               run: npm test
             - name: Run code quality checks
               run: npm run lint
-            - name: 'Report Coverage'
-              if: always() # Also generate the report if tests are failing
+            - name: Report Coverage
+              if: always()
               uses: davelosert/vitest-coverage-report-action@v2
