@@ -149,7 +149,7 @@ export default class Lexer {
     }
 
     private parseFixedTokens(): Token | null {
-        for (let [value, tokenType] of Lexer.fixedTokens) {
+        for (const [value, tokenType] of Lexer.fixedTokens) {
             if (this.content.substring(this.pos, this.pos + value.length) == value) {
                 this.pos += value.length;
                 return new Token(value, tokenType);

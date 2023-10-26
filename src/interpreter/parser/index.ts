@@ -129,7 +129,7 @@ export default class Parser {
     // IDENTIFIER-LIST ::= IDENTIFIER | IDENTIFIER ',' IDENTIFIER-LIST
     private parseIdentifierList(parent: ComponentNode) {
         const identifiers = [];
-        while (true) {
+        for (;;) {
             const identifier = this.parseIdentifier(parent);
             identifiers.push(identifier);
             if (this.peekToken().type !== TokenType.COMMA) break;
@@ -147,7 +147,7 @@ export default class Parser {
             //is empty
             return result;
 
-        while (true) {
+        for (;;) {
             this.parseKeyValuePair(result);
             if (this.peekToken().type === TokenType.RIGHT_BRACE || this.peekToken().type === TokenType.RIGHT_PAREN)
                 break;
@@ -185,7 +185,7 @@ export default class Parser {
             case TokenType.COLOR:
                 this.consumeToken();
                 return new ColorNode(token.lexeme, parent);
-            case TokenType.LEFT_BRACE:
+            case TokenType.LEFT_BRACE: {
                 const leftBrace = this.consumeToken();
                 if (leftBrace.type !== TokenType.LEFT_BRACE)
                     throw new ParserError('Expected "{", got: ' + leftBrace.getTypeString());
@@ -196,7 +196,8 @@ export default class Parser {
                 if (rightBrace.type !== TokenType.RIGHT_BRACE)
                     throw new ParserError('Expected "}", got: ' + rightBrace.getTypeString());
                 return result;
-            case TokenType.LEFT_BRACKET:
+            }
+            case TokenType.LEFT_BRACKET: {
                 const leftBracket = this.consumeToken();
                 if (leftBracket.type !== TokenType.LEFT_BRACKET)
                     throw new ParserError('Expected "[", got: ' + leftBracket.getTypeString());
@@ -207,6 +208,7 @@ export default class Parser {
                 if (rightBracket.type !== TokenType.RIGHT_BRACKET)
                     throw new ParserError('Expected "]", got: ' + rightBracket.getTypeString());
                 return valueList;
+            }
             default:
                 throw new ParserError('Expected value, got: ' + token.getTypeString());
         }
@@ -228,7 +230,7 @@ export default class Parser {
     private parseValueList(parent: Node): ValueListNode {
         const values = [];
         const node = new ValueListNode(parent);
-        while (true) {
+        for (;;) {
             values.push(this.parseValue(node));
             if (this.peekToken().type === TokenType.RIGHT_BRACKET) break;
             const comma = this.consumeToken();

@@ -1,13 +1,14 @@
-import Symbol from './symbol';
+import Sym from './symbol';
 
+type Symb = Sym<any>;
 export default class SymbolTable {
-    private symbols: Map<string, Symbol> = new Map();
+    private symbols: Map<string, Symb> = new Map();
 
-    public add(symbol: Symbol): void {
+    public add(symbol: Symb): void {
         this.symbols.set(symbol.name, symbol);
     }
 
-    public get(name: string): Symbol | null {
+    public get(name: string): Symb | null {
         return this.symbols.get(name) || null;
     }
 
@@ -23,7 +24,7 @@ export default class SymbolTable {
         this.symbols.clear();
     }
 
-    public getSymbols(): Symbol[] {
+    public getSymbols(): Symb[] {
         return Array.from(this.symbols.values());
     }
 

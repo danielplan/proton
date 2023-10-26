@@ -1,7 +1,7 @@
-export default class Symbol {
+export default class Symbol<T> {
     name: string;
-    value: any;
-    constructor(name: string, value: any) {
+    value: T;
+    constructor(name: string, value: T) {
         this.name = name;
         this.value = value;
     }
