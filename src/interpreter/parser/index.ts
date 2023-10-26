@@ -129,7 +129,7 @@ export default class Parser {
     // IDENTIFIER-LIST ::= IDENTIFIER | IDENTIFIER ',' IDENTIFIER-LIST
     private parseIdentifierList(parent: ComponentNode) {
         const identifiers = [];
-        for (;;) {
+        while (true) {
             const identifier = this.parseIdentifier(parent);
             identifiers.push(identifier);
             if (this.peekToken().type !== TokenType.COMMA) break;
