@@ -20,3 +20,6 @@ jobs:
         run: npm test
       - name: Run code quality checks
         run: npm run lint
+    - name: 'Report Coverage'
+      if: always() # Also generate the report if tests are failing
+      uses:  davelosert/vitest-coverage-report-action@v2
