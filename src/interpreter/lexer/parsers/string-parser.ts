@@ -1,7 +1,7 @@
-import TokenParser from './TokenParser';
-import Lexer from './index';
-import Token, { TokenType } from './token';
-import LexerError from './lexer-error';
+import TokenParser from './token-parser';
+import Lexer from '../index';
+import Token, { TokenType } from '../token';
+import LexerError from '../lexer-error';
 
 export default class StringParser extends TokenParser {
     private escapeMap = new Map<string, string>([

@@ -1,11 +1,11 @@
 import Token from './token';
 import LexerError from './lexer-error';
-import NumberParser from './NumberParser';
-import StringParser from './StringParser';
-import FixedTokenParser from './FixedTokenParser';
-import IdentifierParser from './IdentifierParser';
-import ColorParser from './ColorParser';
-import TokenParser from './TokenParser';
+import NumberParser from './parsers/number-parser';
+import StringParser from './parsers/string-parser';
+import FixedTokenParser from './parsers/fixed-token-parser';
+import IdentifierParser from './parsers/identifier-parser';
+import ColorParser from './parsers/color-parser';
+import TokenParser from './parsers/token-parser';
 
 export default class Lexer {
     private text: string;
@@ -24,7 +24,7 @@ export default class Lexer {
         this.position = 0;
     }
 
-    tokenize(): Token[] {
+    public tokenize(): Token[] {
         this.position = 0;
         const tokens: Token[] = [];
         while (!this.isFinished()) {
@@ -34,6 +34,28 @@ export default class Lexer {
             }
         }
         return tokens;
+    }
+
+    public peakCurrentCharacter() {
+        return this.text.charAt(this.position);
+    }
+
+    public consumeCurrentCharacter(): string {
+        return this.text.charAt(this.position++);
+    }
+
+    public peakCharacters(length: number): string {
+        return this.text.substring(this.position, this.position + length);
+    }
+
+    public consumeNextCharacters(length: number): string {
+        const characters = this.peakCharacters(length);
+        this.position += length;
+        return characters;
+    }
+
+    public peakNextCharacter() {
+        return this.text.charAt(this.position + 1);
     }
 
     private getNextToken(): Token | null {
@@ -65,26 +87,6 @@ export default class Lexer {
         return /\s/.test(this.peakCurrentCharacter());
     }
 
-    public peakCurrentCharacter() {
-        return this.text.charAt(this.position);
-    }
 
-    public consumeCurrentCharacter(): string {
-        return this.text.charAt(this.position++);
-    }
-
-    public peakCharacters(length: number): string {
-        return this.text.substring(this.position, this.position + length);
-    }
-
-    public consumeNextCharacters(length: number): string {
-        const characters = this.peakCharacters(length);
-        this.position += length;
-        return characters;
-    }
-
-    public peakNextCharacter() {
-        return this.text.charAt(this.position + 1);
-    }
 
 }

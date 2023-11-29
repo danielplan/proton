@@ -1,6 +1,6 @@
-import TokenParser from './TokenParser';
-import Token, { TokenType } from './token';
-import Lexer from './index';
+import TokenParser from './token-parser';
+import Token, { TokenType } from '../token';
+import Lexer from '../index';
 
 export default class FixedTokenParser extends TokenParser {
     private fixedTokens = new Map<string, TokenType>([

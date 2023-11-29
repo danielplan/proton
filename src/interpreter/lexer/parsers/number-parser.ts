@@ -1,6 +1,6 @@
-import TokenParser from './TokenParser';
-import Token, { TokenType } from './token';
-import Lexer from './index';
+import TokenParser from './token-parser';
+import Token, { TokenType } from '../token';
+import Lexer from '../index';
 
 export default class NumberParser extends TokenParser {
     public parse(lexer: Lexer): Token | null {

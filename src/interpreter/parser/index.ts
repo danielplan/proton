@@ -17,7 +17,6 @@ import ActionNode from './ast/action-node';
 
 export default class Parser {
     tokens: Token[];
-    pos: number = 0;
 
     constructor(tokens: Token[]) {
         this.tokens = tokens;
@@ -289,13 +288,13 @@ export default class Parser {
         return node;
     }
 
-    private consumeToken(): Token {
+    public consumeToken(): Token {
         const token = this.tokens.shift();
         if (token) return token;
         throw new ParserError('Unexpected end of input.');
     }
 
-    private peekToken(amount: number = 0): Token {
+    public peekToken(amount: number = 0): Token {
         return this.tokens[amount];
     }
 }

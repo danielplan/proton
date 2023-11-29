@@ -9,4 +9,5 @@ export default class NumberNode extends Node {
         this.unit = unit;
         this.parent = parent;
     }
+
 }

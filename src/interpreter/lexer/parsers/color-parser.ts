@@ -1,6 +1,6 @@
-import TokenParser from './TokenParser';
-import Lexer from './index';
-import Token, { TokenType } from './token';
+import TokenParser from './token-parser';
+import Lexer from '../index';
+import Token, { TokenType } from '../token';
 
 export default class ColorParser extends TokenParser {
     parse(lexer: Lexer): Token  | null {
