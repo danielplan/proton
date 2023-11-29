@@ -4,27 +4,27 @@ import Lexer from '../src/interpreter/lexer';
 
 describe('Lexer', () => {
     it('should tokenize a number', () => {
-        const lexer = new Lexer('123');
+        let lexer = new Lexer('123');
         expect(lexer.tokenize()).toContainEqual(new Token('123', TokenType.NUMBER));
-        lexer.content = '123.456';
+        lexer = new Lexer( '123.456');
         expect(lexer.tokenize()).toContainEqual(new Token('123.456', TokenType.NUMBER));
-        lexer.content = '          123.456\t\t\n        10     ';
+        lexer = new Lexer('          123.456\t\t\n        10     ');
         expect(lexer.tokenize()).toContainEqual(new Token('123.456', TokenType.NUMBER));
         expect(lexer.tokenize()).toContainEqual(new Token('10', TokenType.NUMBER));
     });
 
     it('should tokenize a string', () => {
-        const lexer = new Lexer('"abc"');
+        let lexer = new Lexer('"abc"');
         expect(lexer.tokenize()).toContainEqual(new Token('"abc"', TokenType.STRING));
-        lexer.content = "'abc'";
+        lexer = new Lexer('\'abc\'');
         expect(lexer.tokenize()).toContainEqual(new Token("'abc'", TokenType.STRING));
     });
 
     it('should tokenize a string and number', () => {
-        const lexer = new Lexer('"abc" 123');
+        let lexer = new Lexer('"abc" 123');
         expect(lexer.tokenize()).toContainEqual(new Token('"abc"', TokenType.STRING));
         expect(lexer.tokenize()).toContainEqual(new Token('123', TokenType.NUMBER));
-        lexer.content = "'abc1010' \t\t\n123";
+        lexer = new Lexer("'abc1010' \t\t\n123");
         expect(lexer.tokenize()).toContainEqual(new Token("'abc1010'", TokenType.STRING));
         expect(lexer.tokenize()).toContainEqual(new Token('123', TokenType.NUMBER));
     });
@@ -35,9 +35,9 @@ describe('Lexer', () => {
     });
 
     it('should tokenize escape characters', () => {
-        const lexer = new Lexer('"abc\\t\\t\\n123"');
+        let lexer = new Lexer('"abc\\t\\t\\n123"');
         expect(lexer.tokenize()).toContainEqual(new Token('"abc\t\t\n123"', TokenType.STRING));
-        lexer.content = "'abc\\t\\t\\n123\\''";
+        lexer = new Lexer("'abc\\t\\t\\n123\\''");
         expect(lexer.tokenize()).toContainEqual(new Token("'abc\t\t\n123''", TokenType.STRING));
     });
 
@@ -63,13 +63,13 @@ describe('Lexer', () => {
     });
 
     it('should tokenize identifiers', () => {
-        const lexer = new Lexer('abc123');
+        let lexer = new Lexer('abc123');
         expect(lexer.tokenize()).toContainEqual(new Token('abc123', TokenType.IDENTIFIER));
-        lexer.content = '_abc123';
+        lexer = new Lexer('_abc123');
         expect(lexer.tokenize()).toContainEqual(new Token('_abc123', TokenType.IDENTIFIER));
-        lexer.content = '_abc123_';
+        lexer = new Lexer('_abc123_');
         expect(lexer.tokenize()).toContainEqual(new Token('_abc123_', TokenType.IDENTIFIER));
-        lexer.content = '_abc123_123';
+        lexer = new Lexer('_abc123_123');
         expect(lexer.tokenize()).toContainEqual(new Token('_abc123_123', TokenType.IDENTIFIER));
     });
 
@@ -77,6 +77,12 @@ describe('Lexer', () => {
         const lexer = new Lexer('20px');
         expect(lexer.tokenize()).toContainEqual(new Token('20', TokenType.NUMBER));
         expect(lexer.tokenize()).toContainEqual(new Token('px', TokenType.UNIT));
+    });
+
+    it('should tokenize colors', () => {
+        const lexer = new Lexer('#fff');
+        expect(lexer.tokenize()).toContainEqual(new Token('#fff', TokenType.COLOR));
+
     });
 
     it('should tokenize a program', () => {

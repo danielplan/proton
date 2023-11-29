@@ -1,43 +1,31 @@
-import Token, { TokenType } from './token';
+import Token from './token';
 import LexerError from './lexer-error';
+import NumberParser from './NumberParser';
+import StringParser from './StringParser';
+import FixedTokenParser from './FixedTokenParser';
+import IdentifierParser from './IdentifierParser';
+import ColorParser from './ColorParser';
+import TokenParser from './TokenParser';
 
 export default class Lexer {
-    content: string;
-    pos: number;
-    static regexDigit = /[0-9]/;
-    static regexLetter = /[a-zA-Z]/;
-    static regexWhitespace = /\s/;
-    static fixedTokens = new Map<string, TokenType>([
-        ['component', TokenType.COMPONENT],
-        ['frame', TokenType.FRAME],
-        ['from', TokenType.FROM],
-        ['px', TokenType.UNIT],
-        ['=>', TokenType.ARROW],
-        ['+', TokenType.PLUS],
-        ['-', TokenType.MINUS],
-        ['*', TokenType.MULTIPLY],
-        ['/', TokenType.DIVIDE],
-        ['(', TokenType.LEFT_PAREN],
-        [')', TokenType.RIGHT_PAREN],
-        ['{', TokenType.LEFT_BRACE],
-        ['}', TokenType.RIGHT_BRACE],
-        ['[', TokenType.LEFT_BRACKET],
-        [']', TokenType.RIGHT_BRACKET],
-        [',', TokenType.COMMA],
-        [';', TokenType.SEMICOLON],
-        ['.', TokenType.DOT],
-        [':', TokenType.COLON],
-        ['=', TokenType.EQUAL],
-        ['%', TokenType.PERCENT],
-    ]);
+    private text: string;
+    private position: number;
+    private PARSERS: TokenParser[] = [
+        new NumberParser(),
+        new StringParser(),
+        new FixedTokenParser(),
+        new IdentifierParser(),
+        new ColorParser(),
+    ];
+
 
     constructor(content: string) {
-        this.content = content;
-        this.pos = 0;
+        this.text = content;
+        this.position = 0;
     }
 
     tokenize(): Token[] {
-        this.pos = 0;
+        this.position = 0;
         const tokens: Token[] = [];
         while (!this.isFinished()) {
             const token = this.getNextToken();
@@ -48,154 +36,55 @@ export default class Lexer {
         return tokens;
     }
 
-    getNextToken(): Token | null {
+    private getNextToken(): Token | null {
         if (this.skipWhitespace()) return null;
-
-        let token = this.parseNumber();
-        if (!token) token = this.parseString();
-        if (!token) token = this.parseFixedTokens();
-        if (!token) token = this.parseIdentifier();
-        if (!token) token = this.parseColor();
-        if (!token) throw new LexerError('Unexpected character: ' + this.getCurrentChar());
-
+        let token: Token | null = null;
+        for (const parser of this.PARSERS) {
+            token = parser.parse(this);
+            if (token) break;
+        }
+        if (!token) throw new LexerError('Unexpected character: ' + this.peakCurrentCharacter());
         return token;
     }
 
-    private parseNumber(): Token | null {
-        let match = '';
-        while (this.isDigit()) {
-            match += this.getCurrentChar();
-            this.pos++;
-            if (this.getCurrentChar() == '.' && this.isDigit(this.getNextChar())) {
-                match += this.getCurrentChar();
-                this.pos++;
-            }
-        }
-        if (match.length > 0) {
-            return new Token(match, TokenType.NUMBER);
-        }
-        return null;
-    }
 
-    private parseString(): Token | null {
-        if (!this.isStringStartingCharacter()) return null;
-
-        const startChar = this.getCurrentChar();
-        let match = startChar;
-        this.pos++;
-        while (this.getCurrentChar() != startChar) {
-            if (!this.getCurrentChar()) {
-                throw new LexerError('Unterminated string');
-            }
-            if (this.getCurrentChar() == '\\') {
-                switch (this.getNextChar()) {
-                    case 'n':
-                        match += '\n';
-                        break;
-                    case 't':
-                        match += '\t';
-                        break;
-                    case 'r':
-                        match += '\r';
-                        break;
-                    default:
-                        match += this.getNextChar();
-                        break;
-                }
-                this.pos += 2;
-            } else {
-                match += this.getCurrentChar();
-                this.pos++;
-            }
-        }
-        match += this.getCurrentChar();
-        this.pos++;
-        if (match.length > 1) {
-            return new Token(match, TokenType.STRING);
-        }
-        return null;
-    }
 
     private skipWhitespace(): boolean {
         const whitespace = this.isWhitespace();
         while (this.isWhitespace()) {
-            this.pos++;
+            this.position++;
         }
         return whitespace;
     }
 
     private isFinished(): boolean {
-        return this.content.length <= this.pos;
+        return this.text.length <= this.position;
     }
 
     private isWhitespace(): boolean {
-        return Lexer.regexWhitespace.test(this.getCurrentChar());
+        return /\s/.test(this.peakCurrentCharacter());
     }
 
-    private isDigit(char: string = this.getCurrentChar()): boolean {
-        return Lexer.regexDigit.test(char);
+    public peakCurrentCharacter() {
+        return this.text.charAt(this.position);
     }
 
-    private isStringStartingCharacter(): boolean {
-        return this.getCurrentChar() == '"' || this.getCurrentChar() == "'";
+    public consumeCurrentCharacter(): string {
+        return this.text.charAt(this.position++);
     }
 
-    private getCurrentChar() {
-        return this.content.charAt(this.pos);
+    public peakCharacters(length: number): string {
+        return this.text.substring(this.position, this.position + length);
     }
 
-    private getNextChar() {
-        return this.content.charAt(this.pos + 1);
+    public consumeNextCharacters(length: number): string {
+        const characters = this.peakCharacters(length);
+        this.position += length;
+        return characters;
     }
 
-    private parseFixedTokens(): Token | null {
-        for (let [value, tokenType] of Lexer.fixedTokens) {
-            if (this.content.substring(this.pos, this.pos + value.length) == value) {
-                this.pos += value.length;
-                return new Token(value, tokenType);
-            }
-        }
-        return null;
+    public peakNextCharacter() {
+        return this.text.charAt(this.position + 1);
     }
 
-    private parseIdentifier(): Token | null {
-        if (!this.isLetter() && this.getCurrentChar() != '_') {
-            return null;
-        }
-        let match = '';
-        while (this.isIdentifierCharacter()) {
-            match += this.getCurrentChar();
-            this.pos++;
-        }
-        return new Token(match, TokenType.IDENTIFIER);
-    }
-
-    private isIdentifierCharacter(): boolean {
-        return this.isLetter() || this.isDigit() || this.getCurrentChar() == '_' || this.getCurrentChar() == '-';
-    }
-
-    private isLetter(): boolean {
-        return Lexer.regexLetter.test(this.getCurrentChar());
-    }
-
-    private parseColor() {
-        if (this.getCurrentChar() != '#') {
-            return null;
-        }
-        this.pos++;
-        let match = '#';
-        while (
-            this.isDigit() ||
-            this.getCurrentChar() == 'a' ||
-            this.getCurrentChar() == 'b' ||
-            this.getCurrentChar() == 'c' ||
-            this.getCurrentChar() == 'd' ||
-            this.getCurrentChar() == 'e' ||
-            this.getCurrentChar() == 'f'
-        ) {
-            match += this.getCurrentChar();
-            this.pos++;
-        }
-        return new Token(match, TokenType.COLOR);
-    }
 }
