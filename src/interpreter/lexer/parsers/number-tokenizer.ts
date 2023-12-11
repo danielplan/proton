@@ -1,8 +1,8 @@
-import TokenParser from './token-parser';
+import Tokenizer from './tokenizer';
 import Token, { TokenType } from '../token';
 import Lexer from '../index';
 
-export default class NumberParser extends TokenParser {
+export default class NumberTokenizer extends Tokenizer {
     public parse(lexer: Lexer): Token | null {
         let match = '';
 

@@ -1,9 +1,9 @@
-import TokenParser from './token-parser';
+import Tokenizer from './tokenizer';
 import Lexer from '../index';
 import Token, { TokenType } from '../token';
 import LexerError from '../lexer-error';
 
-export default class StringParser extends TokenParser {
+export default class StringTokenizer extends Tokenizer {
     private escapeMap = new Map<string, string>([
         ['n', '\n'],
         ['t', '\t'],

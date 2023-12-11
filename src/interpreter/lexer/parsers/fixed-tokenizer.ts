@@ -1,8 +1,8 @@
-import TokenParser from './token-parser';
+import Tokenizer from './tokenizer';
 import Token, { TokenType } from '../token';
 import Lexer from '../index';
 
-export default class FixedTokenParser extends TokenParser {
+export default class FixedTokenizer extends Tokenizer {
     private fixedTokens = new Map<string, TokenType>([
         ['component', TokenType.COMPONENT],
         ['frame', TokenType.FRAME],

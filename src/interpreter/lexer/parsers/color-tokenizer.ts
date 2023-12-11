@@ -1,8 +1,8 @@
-import TokenParser from './token-parser';
+import Tokenizer from './tokenizer';
 import Lexer from '../index';
 import Token, { TokenType } from '../token';
 
-export default class ColorParser extends TokenParser {
+export default class ColorTokenizer extends Tokenizer {
     parse(lexer: Lexer): Token  | null {
         if (!this.isColorStartingCharacter(lexer.peakCurrentCharacter()))
             return null;

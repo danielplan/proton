@@ -1,21 +1,21 @@
 import Token from './token';
 import LexerError from './lexer-error';
-import NumberParser from './parsers/number-parser';
-import StringParser from './parsers/string-parser';
-import FixedTokenParser from './parsers/fixed-token-parser';
-import IdentifierParser from './parsers/identifier-parser';
-import ColorParser from './parsers/color-parser';
-import TokenParser from './parsers/token-parser';
+import NumberTokenizer from './parsers/number-tokenizer';
+import StringTokenizer from './parsers/string-tokenizer';
+import FixedTokenizer from './parsers/fixed-tokenizer';
+import IdentifierTokenizer from './parsers/identifier-tokenizer';
+import ColorTokenizer from './parsers/color-tokenizer';
+import Tokenizer from './parsers/tokenizer';
 
 export default class Lexer {
     private text: string;
     private position: number;
-    private PARSERS: TokenParser[] = [
-        new NumberParser(),
-        new StringParser(),
-        new FixedTokenParser(),
-        new IdentifierParser(),
-        new ColorParser(),
+    private tokenizers: Tokenizer[] = [
+        new NumberTokenizer(),
+        new StringTokenizer(),
+        new FixedTokenizer(),
+        new IdentifierTokenizer(),
+        new ColorTokenizer(),
     ];
 
 
@@ -61,7 +61,7 @@ export default class Lexer {
     private getNextToken(): Token | null {
         if (this.skipWhitespace()) return null;
         let token: Token | null = null;
-        for (const parser of this.PARSERS) {
+        for (const parser of this.tokenizers) {
             token = parser.parse(this);
             if (token) break;
         }

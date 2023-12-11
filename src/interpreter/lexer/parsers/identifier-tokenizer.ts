@@ -1,8 +1,8 @@
 import Lexer from '../index';
 import Token, { TokenType } from '../token';
-import TokenParser from './token-parser';
+import Tokenizer from './tokenizer';
 
-export default class IdentifierParser extends TokenParser {
+export default class IdentifierTokenizer extends Tokenizer {
     parse(lexer: Lexer): Token | null {
         if (!this.isIdentifierStartingCharacter(lexer.peakCurrentCharacter()))
             return null;
