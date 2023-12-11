@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import Parser from '../src/interpreter/parser';
 import Lexer from '../src/interpreter/lexer';
-import FrameNode from '../src/interpreter/parser/ast/frame-node';
-import NumberNode from '../src/interpreter/parser/ast/number-node';
-import StringNode from '../src/interpreter/parser/ast/string-node';
-import IdentifierNode from '../src/interpreter/parser/ast/identifier-node';
-import ColorNode from '../src/interpreter/parser/ast/color-node';
-import RatioNode from '../src/interpreter/parser/ast/ratio-node';
-import CallNode from '../src/interpreter/parser/ast/call-node';
-import ValueListNode from '../src/interpreter/parser/ast/value-list-node';
-import ComponentNode from '../src/interpreter/parser/ast/component-node';
-import KeyValueListNode from '../src/interpreter/parser/ast/key-value-list-node';
-import ActionNode from '../src/interpreter/parser/ast/action-node';
+import FrameNode from '../src/interpreter/ast/frame-node';
+import NumberNode from '../src/interpreter/ast/number-node';
+import StringNode from '../src/interpreter/ast/string-node';
+import IdentifierNode from '../src/interpreter/ast/identifier-node';
+import ColorNode from '../src/interpreter/ast/color-node';
+import RatioNode from '../src/interpreter/ast/ratio-node';
+import CallNode from '../src/interpreter/ast/call-node';
+import ValueListNode from '../src/interpreter/ast/value-list-node';
+import ComponentNode from '../src/interpreter/ast/component-node';
+import KeyValueListNode from '../src/interpreter/ast/key-value-list-node';
+import ActionNode from '../src/interpreter/ast/action-node';
 
 describe('Parser', () => {
     it('should parse top-level statements', () => {

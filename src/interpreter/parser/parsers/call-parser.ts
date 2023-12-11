@@ -1,27 +1,26 @@
-import Parsable from './parsable';
+import AbstractParser from './abstract-parser';
 import { TokenType } from '../../lexer/token';
-import ParserError from '../parser-error';
-import CallNode from '../ast/call-node';
+import { assertTokenType } from '../parser-error';
+import CallNode from '../../ast/call-node';
 import Parser from '../index';
+import Node from '../../ast/node';
+import KeyValuePairListParser from './key-value-pair-list-parser';
+import KeyValueListNode from '../../ast/key-value-list-node';
 
-export default class CallParser implements Parsable {
+export default class CallParser extends AbstractParser {
     parse(parent: Node, parser: Parser): Node {
         const identifier = parser.consumeToken();
-        if (identifier.type !== TokenType.IDENTIFIER)
-            throw new ParserError('Expected identifier, got: ' + identifier.getTypeString());
+        assertTokenType(identifier, TokenType.IDENTIFIER)
 
         const node = new CallNode(identifier.lexeme, null, parent);
 
         const leftParen = parser.consumeToken();
-        if (leftParen.type !== TokenType.LEFT_PAREN)
-            throw new ParserError('Expected "(", got: ' + leftParen.getTypeString());
+        assertTokenType(leftParen, TokenType.LEFT_PAREN)
 
-        node.keyValueList = this.parseKeyValuePairs(node);
+        node.keyValueList = new KeyValuePairListParser().parse(parent, parser) as KeyValueListNode;
 
-        const rightParen = this.consumeToken();
-        if (rightParen.type !== TokenType.RIGHT_PAREN)
-            throw new ParserError('Expected ")", got: ' + rightParen.getTypeString());
-
+        const rightParen = parser.consumeToken();
+        assertTokenType(rightParen, TokenType.RIGHT_PAREN)
         return node;
     }
 }

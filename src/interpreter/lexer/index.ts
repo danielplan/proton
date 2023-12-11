@@ -1,11 +1,11 @@
 import Token from './token';
 import LexerError from './lexer-error';
-import NumberTokenizer from './parsers/number-tokenizer';
-import StringTokenizer from './parsers/string-tokenizer';
-import FixedTokenizer from './parsers/fixed-tokenizer';
-import IdentifierTokenizer from './parsers/identifier-tokenizer';
-import ColorTokenizer from './parsers/color-tokenizer';
-import Tokenizer from './parsers/tokenizer';
+import NumberTokenizer from './tokenizers/number-tokenizer';
+import StringTokenizer from './tokenizers/string-tokenizer';
+import FixedTokenizer from './tokenizers/fixed-tokenizer';
+import IdentifierTokenizer from './tokenizers/identifier-tokenizer';
+import ColorTokenizer from './tokenizers/color-tokenizer';
+import Tokenizer from './tokenizers/tokenizer';
 
 export default class Lexer {
     private text: string;

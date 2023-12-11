@@ -1,55 +1,55 @@
-import Parsable from './parsable';
+import AbstractParser from './abstract-parser';
 import Parser from '../index';
 import { TokenType } from '../../lexer/token';
-import StringNode from '../ast/string-node';
-import ColorNode from '../ast/color-node';
-import ParserError from '../parser-error';
+import StringNode from '../../ast/string-node';
+import ColorNode from '../../ast/color-node';
+import ParserError, { assertTokenType } from '../parser-error';
 import NumberParser from './number-parser';
-import Node from '../ast/node';
+import Node from '../../ast/node';
+import CallParser from './call-parser';
+import IdentifierParser from './identifier-parser';
+import KeyValuePairListParser from './key-value-pair-list-parser';
+import ActionParser from './action-parser';
+import ValueListParser from './value-list-parser';
 
-export default class ValueParser implements Parsable {
+export default class ValueParser extends AbstractParser {
 
 
+    // VALUE ::= NUMBER | NUMBER UNIT | COLOR | IDENTIFIER | RATIO | STRING | [ VALUE_LIST ] | { KEY-VALUE-PAIRS } | CALL | ACTION
     parse(parent: Node, parser: Parser) {
-
         const token = parser.peekToken();
+
         switch (token.type) {
             case TokenType.NUMBER:
                 return new NumberParser().parse(parent, parser);
             case TokenType.IDENTIFIER:
-                if (this.peekToken(1).type === TokenType.LEFT_PAREN) return this.parseCall(parent);
-                if (this.peekToken(1).type === TokenType.ARROW) return this.parseAction(parent);
-                return this.parseIdentifier(parent);
+                if (parser.peekToken(1).type === TokenType.LEFT_PAREN) return new CallParser().parse(parent, parser);
+                if (parser.peekToken(1).type === TokenType.ARROW) return new ActionParser().parse(parent, parser);
+                return new IdentifierParser().parse(parent, parser);
             case TokenType.STRING:
-                this.consumeToken();
+                parser.consumeToken();
                 return new StringNode(token.lexeme.substring(1, token.lexeme.length - 1), parent);
             case TokenType.COLOR:
-                this.consumeToken();
+                parser.consumeToken();
                 return new ColorNode(token.lexeme, parent);
             case TokenType.LEFT_BRACE:
-                const leftBrace = this.consumeToken();
-                if (leftBrace.type !== TokenType.LEFT_BRACE)
-                    throw new ParserError('Expected "{", got: ' + leftBrace.getTypeString());
+                const leftBrace = parser.consumeToken();
+                assertTokenType(leftBrace, TokenType.LEFT_BRACE);
+                const result = new KeyValuePairListParser().parse(parent, parser);
 
-                const result = this.parseKeyValuePairs(parent);
-
-                const rightBrace = this.consumeToken();
-                if (rightBrace.type !== TokenType.RIGHT_BRACE)
-                    throw new ParserError('Expected "}", got: ' + rightBrace.getTypeString());
+                const rightBrace = parser.consumeToken();
+                assertTokenType(rightBrace, TokenType.RIGHT_BRACE)
                 return result;
             case TokenType.LEFT_BRACKET:
-                const leftBracket = this.consumeToken();
-                if (leftBracket.type !== TokenType.LEFT_BRACKET)
-                    throw new ParserError('Expected "[", got: ' + leftBracket.getTypeString());
+                const leftBracket = parser.consumeToken();
+                assertTokenType(leftBracket, TokenType.LEFT_BRACKET)
+                const valueList = new ValueListParser().parse(parent, parser);
 
-                const valueList = this.parseValueList(parent);
-
-                const rightBracket = this.consumeToken();
-                if (rightBracket.type !== TokenType.RIGHT_BRACKET)
-                    throw new ParserError('Expected "]", got: ' + rightBracket.getTypeString());
+                const rightBracket = parser.consumeToken();
+                assertTokenType(rightBracket, TokenType.RIGHT_BRACKET)
                 return valueList;
             default:
-                throw new ParserError('Expected value, got: ' + token.getTypeString());
+                throw new ParserError('value', token, false);
         }
     }
 }
